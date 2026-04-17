@@ -328,3 +328,13 @@ body.dark .mention-item:active,.dark .mention-item.sel{background:#3a2518}
 .load-more-btn{background:none;border:1px dashed var(--gd);border-radius:8px;padding:6px 16px;font-size:12px;color:var(--mt);cursor:pointer;margin:4px auto 8px;display:block;font-family:Georgia,serif}
 .load-more-btn:active{background:var(--pm)}
 button,.rm,.am-it,.usr-it,.mention-item,.emoji-item,.rp-btn,.react,.hdr-act,.a-tab,.icn-btn,.new-chat-btn,.mbrs-add{-webkit-user-select:none;user-select:none}
+.watermark{position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.04;display:flex;flex-wrap:wrap;align-content:flex-start;gap:40px 60px;padding:20px;transform:rotate(-25deg);overflow:hidden}
+.watermark span{font-size:14px;color:var(--br);white-space:nowrap;font-family:monospace}
+.lock-screen{display:none;position:fixed;inset:0;background:var(--br);z-index:10000;align-items:center;justify-content:center;flex-direction:column;gap:16px}
+.lock-screen.show{display:flex}
+.lock-card{background:var(--pk);border-radius:20px;padding:28px;width:90%;max-width:340px;text-align:center}
+.lock-card h3{font-size:18px;color:var(--br);font-family:Georgia,serif;margin-bottom:12px}
+.lock-card input{width:100%;border:1.5px solid var(--gd);border-radius:10px;padding:11px 13px;font-size:16px;background:var(--pm);color:var(--br);outline:none;font-family:inherit;margin-bottom:12px}
+.devices-item{display:flex;align-items:center;gap:10px;padding:10px 4px;border-bottom:1px solid rgba(196,168,130,.3)}
+.devices-item:last-child{border-bottom:none}
+.dev-current{color:var(--gr);font-size:10px;font-weight:700}

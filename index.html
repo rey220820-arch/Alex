@@ -86,6 +86,7 @@
           <div class="usr-menu-item" id="mi-users" style="display:none" onclick="showUsrMgmt();closeUsrMenu()">👥 Сотрудники</div>
           <div class="usr-menu-item" id="mi-invites" style="display:none" onclick="showInvites();closeUsrMenu()">🔗 Приглашения</div>
           <div class="usr-menu-item" onclick="showDm();closeUsrMenu()">✉️ Личное сообщение</div>
+          <div class="usr-menu-item" onclick="showDevices();closeUsrMenu()">📱 Мои устройства</div>
           <div class="usr-menu-item" id="mi-theme" onclick="toggleTheme();closeUsrMenu()">🌙 Ночная тема</div>
           <div class="usr-menu-item danger" onclick="doLogout()">🚪 Выйти</div>
         </div>
@@ -353,6 +354,29 @@
   </div>
   <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('resetpass')">Закрыть</button><button class="btn-yes" id="rp-do-btn" onclick="doResetPass()">Сбросить</button></div>
 </div></div>
+
+<div class="ovrl" id="ovrl-devices"><div class="mdl">
+  <h3>Мои устройства</h3>
+  <div class="mdl-hint">Активные сессии вашего аккаунта</div>
+  <div id="devices-list"></div>
+  <div class="mdl-btns" style="margin-top:12px">
+    <button class="btn-no" onclick="closeOvrl('devices')">Закрыть</button>
+    <button class="btn-yes" style="background:var(--rd)" onclick="logoutAllOther()">Завершить все другие</button>
+  </div>
+</div></div>
+
+<div class="lock-screen" id="lock-screen">
+  <div class="lock-card">
+    <h3>🔒 Сессия заблокирована</h3>
+    <div style="font-size:12px;color:var(--mt);margin-bottom:12px">Введите пароль для продолжения</div>
+    <input type="password" id="lock-pass" placeholder="Пароль" onkeydown="if(event.key==='Enter')unlockSession()">
+    <button class="a-btn" onclick="unlockSession()">Разблокировать</button>
+    <div class="a-err" id="lock-err" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<div class="watermark" id="watermark"></div>
+
 
 <!-- Эмодзи-пикер -->
 <div class="emoji-picker" id="emoji-picker">

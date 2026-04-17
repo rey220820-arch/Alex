@@ -148,6 +148,8 @@ function showApp() {
   $('usr-av').textContent = ini(nm);
   $('usr-nm').textContent = nm;
   if (S.isAdmin) applyAdminUI();
+  initWatermark();
+  resetInactivity();
   initFab();
   const msgsEl = $('msgs');
   if (msgsEl && !msgsEl._scrollInit) {
@@ -1933,4 +1935,107 @@ async function doResetPass() {
     err.textContent = e.message;
     err.classList.add('show');
   }
+}
+
+// ===== ВАТЕРМАРК =====
+function initWatermark() {
+  const el = $('watermark');
+  if (!el || !S.userId) return;
+  const login = S.userId.split(':')[0].replace('@', '');
+  const now = new Date().toLocaleDateString('ru');
+  const text = login + ' · ' + now;
+  el.innerHTML = '';
+  for (let i = 0; i < 80; i++) {
+    const s = document.createElement('span');
+    s.textContent = text;
+    el.appendChild(s);
+  }
+}
+
+// ===== ТАЙМАУТ БЕЗДЕЙСТВИЯ =====
+let inactivityTimer = null;
+const INACTIVITY_MS = 15 * 60 * 1000;
+
+function resetInactivity() {
+  clearTimeout(inactivityTimer);
+  if (!S.token) return;
+  inactivityTimer = setTimeout(lockSession, INACTIVITY_MS);
+}
+
+function lockSession() {
+  if (!S.token) return;
+  $('lock-screen').classList.add('show');
+  $('lock-pass').value = '';
+  $('lock-err').classList.remove('show');
+}
+
+async function unlockSession() {
+  const pass = $('lock-pass').value;
+  if (!pass) return;
+  const err = $('lock-err');
+  err.classList.remove('show');
+  try {
+    const login = S.userId.split(':')[0].replace('@', '');
+    const d = await api('POST', '/login', { type: 'm.login.password', identifier: { type: 'm.id.user', user: login }, password: pass });
+    if (d.access_token) {
+      await api('POST', '/logout', {}, d.access_token).catch(() => {});
+      $('lock-screen').classList.remove('show');
+      resetInactivity();
+    } else { throw new Error('Неверный пароль'); }
+  } catch (e) { err.textContent = e.message || 'Неверный пароль'; err.classList.add('show'); }
+}
+
+['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'].forEach(evt => {
+  document.addEventListener(evt, resetInactivity, { passive: true });
+});
+
+// ===== МОИ УСТРОЙСТВА =====
+async function showDevices() {
+  openOvrl('devices');
+  const el = $('devices-list');
+  el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:12px">Загружаем...</div>';
+  try {
+    const d = await api('GET', '/devices');
+    const devices = d.devices || [];
+    el.innerHTML = '';
+    devices.forEach(dev => {
+      const div = document.createElement('div');
+      div.className = 'devices-item';
+      const lastSeen = dev.last_seen_ts ? new Date(dev.last_seen_ts).toLocaleString('ru') : 'неизвестно';
+      const isCurrent = dev.device_id === (S.deviceId || '');
+      div.innerHTML = '<div style="flex:1;min-width:0">' +
+        '<div style="font-size:13px;font-weight:600;color:var(--br)">' + esc(dev.display_name || dev.device_id) + '</div>' +
+        '<div style="font-size:11px;color:var(--mt)">' + esc(dev.device_id) + '</div>' +
+        '<div style="font-size:10px;color:var(--mt)">Последняя активность: ' + lastSeen + (dev.last_seen_ip ? ' · ' + esc(dev.last_seen_ip) : '') + '</div>' +
+        '</div>' +
+        (isCurrent ? '<span class="dev-current">текущее</span>' : '<button style="background:none;border:1px solid var(--rd);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--rd);cursor:pointer;flex-shrink:0" onclick="logoutDevice(\'' + esc(dev.device_id) + '\')">Завершить</button>');
+      el.appendChild(div);
+    });
+    if (!devices.length) el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:12px">Нет устройств</div>';
+  } catch { el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:12px">Ошибка загрузки</div>'; }
+}
+
+async function logoutDevice(deviceId) {
+  try {
+    const r1 = await api('DELETE', '/devices/' + encodeURIComponent(deviceId), {});
+    if (r1._status === 401 && r1.flows) {
+      const session = r1.session;
+      await api('DELETE', '/devices/' + encodeURIComponent(deviceId), { auth: { type: 'm.login.password', identifier: { type: 'm.id.user', user: S.userId }, password: '', session } });
+    }
+    showNotif('Устройство отключено');
+    showDevices();
+  } catch { showNotif('Ошибка'); }
+}
+
+async function logoutAllOther() {
+  if (!confirm('Завершить все другие сессии?')) return;
+  try {
+    const d = await api('GET', '/devices');
+    const devices = (d.devices || []).filter(dev => dev.device_id !== (S.deviceId || ''));
+    for (const dev of devices) {
+      await api('DELETE', '/devices/' + encodeURIComponent(dev.device_id), {}).catch(() => {});
+    }
+    showNotif('✅ Все другие сессии завершены');
+    showDevices();
+  } catch { showNotif('Ошибка'); }
 }
