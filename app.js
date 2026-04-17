@@ -334,6 +334,8 @@ function applyAdminUI() {
   if (miUsers) miUsers.style.display = 'flex';
   const miInvites = $('mi-invites');
   if (miInvites) miInvites.style.display = 'flex';
+  const miStorage = $('mi-storage');
+  if (miStorage) miStorage.style.display = 'flex';
 }
 
 async function fetchMyPowerLevel(room) {
@@ -2111,3 +2113,43 @@ window.addEventListener('online', () => { showNotif('Сеть восстанов
 window.addEventListener('offline', () => { showNotif('Нет подключения — сообщения будут отправлены позже'); });
 
 openOutboxDb().catch(() => {});
+
+// ===== ХРАНИЛИЩЕ =====
+async function showStorage() {
+  openOvrl('storage');
+  const el = $('storage-info');
+  el.textContent = 'Загружаем...';
+  const saved = localStorage.getItem('tg_media_retention') || '0';
+  $('storage-retention').value = saved;
+  $('storage-retention').onchange = () => {
+    localStorage.setItem('tg_media_retention', $('storage-retention').value);
+    showNotif('Настройка сохранена');
+  };
+  try {
+    const d = await adminApi('/v1/statistics/database/rooms');
+    if (d._ok && d.rooms) {
+      let totalMedia = 0;
+      d.rooms.forEach(r => { totalMedia += r.media_store_local || 0; });
+      el.innerHTML = '<div style="margin-bottom:8px"><b>Комнат:</b> ' + d.rooms.length + '</div>' +
+        '<div><b>Медиафайлы (локальные):</b> ' + d.rooms.reduce((s, r) => s + (r.local_events || 0), 0) + ' событий</div>';
+    } else {
+      const d2 = await adminApi('/v1/server_version');
+      el.innerHTML = '<div>Synapse ' + esc(d2.server_version || 'версия неизвестна') + '</div>' +
+        '<div style="font-size:12px;color:var(--mt);margin-top:8px">Статистика недоступна для этой версии</div>';
+    }
+  } catch { el.textContent = 'Ошибка загрузки данных'; }
+}
+
+async function purgeMediaNow() {
+  if (!confirm('Очистить кеш медиа на сервере?\n\nЭто удалит закешированные превью и удалённые медиафайлы.')) return;
+  try {
+    const before = Date.now();
+    const d = await adminPost('/v1/purge_media_cache?before_ts=' + before, {});
+    if (d._ok || d.deleted !== undefined) {
+      showNotif('✅ Очищено: ' + (d.deleted || 0) + ' файлов');
+    } else {
+      const d2 = await adminPost('/v1/media/delete?before_ts=' + before, {});
+      showNotif('✅ Очистка завершена');
+    }
+  } catch { showNotif('Ошибка очистки'); }
+}

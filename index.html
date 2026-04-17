@@ -85,6 +85,7 @@
           <div class="usr-menu-item" id="mi-new-chat" style="display:none" onclick="openOvrl('create');closeUsrMenu()">✏️ Новый чат</div>
           <div class="usr-menu-item" id="mi-users" style="display:none" onclick="showUsrMgmt();closeUsrMenu()">👥 Сотрудники</div>
           <div class="usr-menu-item" id="mi-invites" style="display:none" onclick="showInvites();closeUsrMenu()">🔗 Приглашения</div>
+          <div class="usr-menu-item" id="mi-storage" style="display:none" onclick="showStorage();closeUsrMenu()">💾 Хранилище</div>
           <div class="usr-menu-item" onclick="showDm();closeUsrMenu()">✉️ Личное сообщение</div>
           <div class="usr-menu-item" onclick="showDevices();closeUsrMenu()">📱 Мои устройства</div>
           <div class="usr-menu-item" id="mi-theme" onclick="toggleTheme();closeUsrMenu()">🌙 Ночная тема</div>
@@ -362,6 +363,25 @@
   <div class="mdl-btns" style="margin-top:12px">
     <button class="btn-no" onclick="closeOvrl('devices')">Закрыть</button>
     <button class="btn-yes" style="background:var(--rd)" onclick="logoutAllOther()">Завершить все другие</button>
+  </div>
+</div></div>
+
+<div class="ovrl" id="ovrl-storage"><div class="mdl">
+  <h3>💾 Хранилище</h3>
+  <div id="storage-info" style="padding:8px 0;font-size:13px;color:var(--br)">Загружаем...</div>
+  <div class="fld" style="margin-top:12px"><label>Автоочистка медиа старше</label>
+    <select id="storage-retention" style="width:100%;border:1.5px solid var(--gd);border-radius:10px;padding:11px 13px;font-size:14px;background:var(--pm);color:var(--br);outline:none;font-family:inherit">
+      <option value="0">Выключена</option>
+      <option value="30">30 дней</option>
+      <option value="60">60 дней</option>
+      <option value="90">90 дней</option>
+      <option value="180">180 дней</option>
+      <option value="365">1 год</option>
+    </select>
+  </div>
+  <div class="mdl-btns" style="margin-top:12px">
+    <button class="btn-no" onclick="closeOvrl('storage')">Закрыть</button>
+    <button class="btn-yes" style="background:var(--rd)" onclick="purgeMediaNow()">Очистить сейчас</button>
   </div>
 </div></div>
 
