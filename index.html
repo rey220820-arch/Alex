@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ТОП ГЕН">
+<meta name="theme-color" content="#3D2010">
+<title>ТОП ГЕН</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- СПЛЭШ -->
+<div class="screen" id="splash" style="display:flex">
+  <div class="sp-logo"><img src="icons/icon-512.png" alt="ТОП ГЕН" onerror="this.style.display='none'"></div>
+  <div class="sp-name">ТОП ГЕН</div>
+  <div class="sp-sub">Верхняя Хава · Мессенджер</div>
+  <div class="sp-bar"><div class="sp-fill"></div></div>
+</div>
+
+<!-- AUTH -->
+<div class="screen hidden" id="auth">
+  <div class="a-card">
+    <div class="a-logo"><img src="icons/icon-512.png" alt="ТОП ГЕН" onerror="this.parentNode.style.background='var(--gd)'"></div>
+    <div class="a-title">ТОП ГЕН</div>
+    <div class="a-sub">Корпоративный мессенджер · Верхняя Хава</div>
+    <div class="a-tabs">
+      <div class="a-tab active" id="tab-in" onclick="switchTab('l')">Войти</div>
+      <div class="a-tab" id="tab-rg" onclick="switchTab('r')">Регистрация</div>
+    </div>
+    <div class="a-err" id="a-err"></div>
+    <div id="f-l">
+      <div class="fld"><label>Логин</label><input type="text" id="l-u" placeholder="Введите логин" autocapitalize="none" autocorrect="off" spellcheck="false"></div>
+      <div class="fld"><label>Пароль</label><input type="password" id="l-p" placeholder="Введите пароль"></div>
+      <button class="a-btn" onclick="doLogin()">Войти</button>
+    </div>
+    <div id="f-r" style="display:none">
+      <div class="fld"><label>Логин</label><input type="text" id="r-u" placeholder="например: ivanov_s" autocapitalize="none" autocorrect="off" spellcheck="false"><div class="fhint">Латинские буквы, цифры и знак _</div></div>
+      <div class="fld"><label>Пароль</label><input type="password" id="r-p" placeholder="Минимум 8 символов"></div>
+      <div class="fld"><label>Повторите пароль</label><input type="password" id="r-p2" placeholder="Повторите пароль"></div>
+      <button class="a-btn" onclick="doRegister()">Создать аккаунт</button>
+    </div>
+    <div class="a-load" id="a-load"><div class="spin"></div>Подождите...</div>
+  </div>
+</div>
+
+<!-- ГЛАВНЫЙ ЭКРАН -->
+<div class="screen hidden" id="app">
+
+  <!-- САЙДБАР -->
+  <div class="sb" id="sb">
+    <div class="sb-hdr">
+      <div class="sb-top">
+        <div class="sb-logo"><img src="icons/icon-512.png" alt="ТОП ГЕН" onerror="this.parentNode.style.background='var(--gd)'"></div>
+        <div><div class="sb-nm">ТОП ГЕН</div><div class="sb-sm">Верхняя Хава · Мессенджер</div></div>
+      </div>
+    </div>
+    <div class="sb-search">
+      <div class="sb-search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--mt)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Поиск чатов..." oninput="filterRooms(this.value)" id="rm-search">
+      </div>
+    </div>
+    <div class="rms-lbl">
+      Мои чаты
+      <button class="new-chat-btn" id="new-chat-btn" onclick="openOvrl('create')" style="display:none">+ чат</button>
+    </div>
+    <div class="rms" id="rms"><div style="padding:20px;text-align:center;color:var(--mt);font-size:13px">Загружаем чаты...</div></div>
+    <div class="usr-bar">
+      <div class="usr-av" id="usr-av" onclick="openProfile()" style="cursor:pointer;flex-shrink:0">?</div>
+      <div class="usr-inf">
+        <div class="usr-nm" id="usr-nm">...</div>
+        <div class="usr-st" id="usr-st">онлайн</div>
+      </div>
+      <div class="dot" style="flex-shrink:0"></div>
+      <div class="usr-menu-wrap">
+        <button class="usr-menu-btn" onclick="toggleUsrMenu()" title="Меню">⋯</button>
+        <div class="usr-menu" id="usr-menu">
+          <div class="usr-menu-item" onclick="openProfile();closeUsrMenu()">👤 Профиль</div>
+          <div class="usr-menu-item" id="mi-new-chat" style="display:none" onclick="openOvrl('create');closeUsrMenu()">✏️ Новый чат</div>
+          <div class="usr-menu-item" id="mi-users" style="display:none" onclick="showUsrMgmt();closeUsrMenu()">👥 Сотрудники</div>
+          <div class="usr-menu-item" onclick="showDm();closeUsrMenu()">✉️ Личное сообщение</div>
+          <div class="usr-menu-item" id="mi-theme" onclick="toggleTheme();closeUsrMenu()">🌙 Ночная тема</div>
+          <div class="usr-menu-item danger" onclick="doLogout()">🚪 Выйти</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ЧАТ -->
+  <div class="ct" id="ct">
+    <div class="ct-hdr">
+      <button class="bk-btn" onclick="goBack()">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--br)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <div class="ct-av" id="ct-av"></div>
+      <div class="ct-inf" onclick="toggleMembers()">
+        <div class="ct-nm" id="ct-nm">Выберите чат</div>
+        <div class="ct-mb" id="ct-mb"></div>
+      </div>
+      <div class="hdr-acts">
+        <button class="hdr-act hdr-act-hide" onclick="showGallery()" title="Медиа и файлы">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </button>
+        <button class="hdr-act hdr-act-hide" onclick="showPinned()" title="Закреплённые">📌</button>
+        <button class="hdr-act" onclick="toggleSearch()" title="Поиск в чате">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </button>
+        <button class="hdr-act" onclick="toggleMembers()" title="Участники">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+        </button>
+        <button class="hdr-act" onclick="toggleRoomMenu()" id="room-menu-btn" title="Настройки чата">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+        </button>
+        <div class="e2e">🔒 E2E</div>
+      </div>
+      <div id="room-menu" style="display:none">
+        <div class="rm-menu-item" onclick="closeRoomMenu();showGallery()">🖼 Медиа и файлы</div>
+        <div class="rm-menu-item" onclick="closeRoomMenu();showPinned()">📌 Закреплённые</div>
+        <div class="rm-menu-item" id="rm-rename" style="display:none" onclick="closeRoomMenu();renameRoom()">✏️ Переименовать</div>
+        <div class="rm-menu-item" onclick="closeRoomMenu();leaveCurrentRoom()">🚪 Покинуть чат</div>
+        <div class="rm-menu-item danger" id="rm-delete" style="display:none" onclick="closeRoomMenu();deleteCurrentRoom()">🗑 Удалить чат</div>
+      </div>
+    </div>
+
+    <div class="search-bar" id="search-bar">
+      <input id="search-inp" placeholder="Поиск в переписке..." oninput="searchMsgs(this.value)">
+      <span id="search-cnt"></span>
+      <button class="search-bar-cls" onclick="toggleSearch()">Закрыть</button>
+    </div>
+
+    <div class="msgs-wrap">
+      <div class="msgs" id="msgs" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)"></div>
+      <div class="no-chat" id="no-chat">
+        <div class="no-chat-logo"><img src="icons/icon-512.png" alt="ТОП ГЕН" onerror="this.parentNode.style.background='var(--gd)'"></div>
+        <div class="no-chat-tx">Выберите чат<br>в списке слева</div>
+      </div>
+      <div class="mbrs-pnl" id="mbrs-pnl">
+        <div class="mbrs-hdr">
+          <span class="mbrs-ttl" id="mbrs-ttl">Участники</span>
+          <button class="mbrs-cls" onclick="toggleMembers()">✕</button>
+        </div>
+        <div class="mbrs-list" id="mbrs-list"></div>
+        <button class="mbrs-add" onclick="showInvite()">＋ Добавить участника</button>
+        <button class="mbrs-add mbrs-add-link" onclick="showRoomLink()">🔗 Ссылка-приглашение</button>
+      </div>
+    </div>
+
+    <div class="typing-ind" id="typing-ind">печатает <span class="typing-dots"><span></span><span></span><span></span></span></div>
+    <div class="inp-area">
+      <div class="reply-bar" id="reply-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--br)" stroke-width="2" stroke-linecap="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 00-4-4H4"/></svg>
+        <div class="reply-bar-inf"><div class="reply-bar-nm" id="rp-nm"></div><div class="reply-bar-tx" id="rp-tx"></div></div>
+        <button class="reply-bar-cls" onclick="cancelReply()">✕</button>
+      </div>
+      <div class="edit-bar" id="edit-bar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--bl)" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <div class="edit-bar-tx" id="edit-tx">Редактирование сообщения</div>
+        <button class="edit-bar-cls" onclick="cancelEdit()">✕</button>
+      </div>
+      <div class="att-prev" id="att-prev">
+        <span id="att-ico"></span>
+        <span class="att-nm" id="att-nm"></span>
+        <button class="att-rm" onclick="clearAtt()">✕</button>
+      </div>
+      <div class="inp-row">
+        <div class="att-wrap">
+          <button class="att-btn" onclick="toggleAtt()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--br)" stroke-width="2" stroke-linecap="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <div class="att-menu" id="att-menu">
+            <label class="am-it">🖼️ Фото / видео<input type="file" accept="image/*,video/*" style="display:none" onchange="fileChosen(event,'img')"></label>
+            <label class="am-it">📄 Документ<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.zip,.rar" style="display:none" onchange="fileChosen(event,'doc')"></label>
+          </div>
+        </div>
+        <button class="emoji-btn" onclick="toggleEmojiPicker(event)" title="Эмодзи">😊</button>
+        <textarea class="msg-inp" id="msg-inp" placeholder="Сообщение..." rows="1" maxlength="4096"
+          oninput="onInp(this);handleMentionInput(event)"
+          onkeydown="onKey(event)"
+          onfocus="onFocus();loadMentionMembers()"
+          onblur="onBlur();setTimeout(hideMentionPopup,200)"></textarea>
+        <button class="snd-btn" id="snd-btn" onclick="sendMsg()">
+          <svg width="17" height="17" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" stroke="var(--pk)" stroke-width="2.5" stroke-linecap="round"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="var(--pk)"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ПРОСМОТР ФОТО -->
+<div class="img-viewer" id="img-viewer">
+  <button class="img-viewer-cls" onclick="closeImgViewer()">✕</button>
+  <img id="img-viewer-img" src="" alt="фото">
+</div>
+
+<!-- FAB (мобильный) -->
+<div class="fab-wrap" id="fab-wrap">
+  <div class="fab-row" id="fab-row-chat" style="display:none">
+    <span class="fab-label">Новый чат</span>
+    <button class="fab fab-mini" onclick="fabCreateChat()" title="Новый чат">✏️</button>
+  </div>
+  <div class="fab-row" id="fab-row-users" style="display:none">
+    <span class="fab-label">Сотрудники</span>
+    <button class="fab fab-mini" onclick="showUsrMgmt();toggleFab()" title="Сотрудники">👥</button>
+  </div>
+  <div class="fab-row" id="fab-row-dm" style="display:none">
+    <span class="fab-label">Личное сообщение</span>
+    <button class="fab fab-mini" onclick="showDm();toggleFab()" title="Личное">✉️</button>
+  </div>
+  <button class="fab fab-main" id="fab-main" onclick="toggleFab()">✏️</button>
+</div>
+
+<!-- МОДАЛКИ -->
+<div class="ovrl" id="ovrl-create"><div class="mdl">
+  <h3>Новый чат</h3>
+  <div class="mdl-hint">Введите название нового чата</div>
+  <input id="new-rm-nm" placeholder="Название чата...">
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('create')">Отмена</button><button class="btn-yes" onclick="createRoom()">Создать</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-invite"><div class="mdl">
+  <h3>Добавить участника</h3>
+  <div class="mdl-hint">Выберите сотрудника из списка</div>
+  <input id="inv-srch" placeholder="Поиск по логину..." oninput="filterInvList(this.value)">
+  <div class="usr-list" id="inv-list"></div>
+  <input type="hidden" id="inv-uid">
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('invite')">Отмена</button><button class="btn-yes" id="inv-ok" onclick="doInvite()" disabled>Добавить</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-roomlink"><div class="mdl">
+  <h3>Ссылка-приглашение</h3>
+  <div class="mdl-hint">Отправьте ссылку сотруднику — он перейдёт и автоматически попадёт в этот чат после входа</div>
+  <input id="rl-val" readonly onclick="this.select()">
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('roomlink')">Закрыть</button><button class="btn-yes" onclick="copyRoomLink()">Скопировать</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-users"><div class="mdl">
+  <h3>Сотрудники</h3>
+  <input id="umgmt-srch" placeholder="Поиск..." oninput="filterUmgmt(this.value)">
+  <div id="umgmt-list"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('users')">Закрыть</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-pinned"><div class="mdl">
+  <h3>Закреплённые сообщения</h3>
+  <div id="pinned-list"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('pinned')">Закрыть</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-gallery"><div class="mdl">
+  <h3>Медиа и файлы</h3>
+  <div class="gallery-tabs">
+    <button onclick="switchGalleryTab('photo')" id="gtab-photo" class="btn-yes">Фото</button>
+    <button onclick="switchGalleryTab('file')" id="gtab-file" class="btn-no">Файлы</button>
+  </div>
+  <div id="gallery-content"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('gallery')">Закрыть</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-profile"><div class="mdl">
+  <h3>Мой профиль</h3>
+  <div class="profile-av-wrap" onclick="changeAvatar()">
+    <div class="profile-av" id="prof-av"></div>
+    <div class="profile-av-edit">✏️</div>
+  </div>
+  <input type="file" id="av-file" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
+  <div class="fld"><label>Имя (отображаемое)</label><input id="prof-name" placeholder="Ваше имя"></div>
+  <span class="change-pass-link" onclick="closeOvrl('profile');openOvrl('chpass')">Изменить пароль</span>
+  <div class="mdl-btns">
+    <button class="btn-no" onclick="closeOvrl('profile')">Отмена</button>
+    <button class="btn-yes" onclick="saveProfile()">Сохранить</button>
+  </div>
+</div></div>
+
+<div class="ovrl" id="ovrl-edithist"><div class="mdl">
+  <h3>История редактирований</h3>
+  <div id="edithist-list"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('edithist')">Закрыть</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-dm"><div class="mdl">
+  <h3>Личное сообщение</h3>
+  <div class="mdl-hint">Выберите сотрудника для личного чата</div>
+  <input id="dm-srch" placeholder="Поиск..." oninput="filterDmList(this.value)">
+  <div class="usr-list" id="dm-list"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('dm')">Отмена</button><button class="btn-yes" id="dm-ok" onclick="createDm()" disabled>Написать</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-chpass"><div class="mdl">
+  <h3>Изменить пароль</h3>
+  <div class="fld"><label>Текущий пароль</label><input type="password" id="cp-old" placeholder="Текущий пароль"></div>
+  <div class="fld"><label>Новый пароль</label><input type="password" id="cp-new" placeholder="Новый пароль (мин. 8 символов)"></div>
+  <div class="fld"><label>Повторите новый</label><input type="password" id="cp-new2" placeholder="Повторите новый пароль"></div>
+  <div class="a-err" id="cp-err"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('chpass')">Отмена</button><button class="btn-yes" onclick="doChangePass()">Сохранить</button></div>
+</div></div>
+
+<!-- Эмодзи-пикер -->
+<div class="emoji-picker" id="emoji-picker">
+  <div class="emoji-cats" id="emoji-cats"></div>
+  <div class="emoji-grid" id="emoji-grid"></div>
+</div>
+
+<div id="mention-popup" class="mention-popup"></div>
+<div class="notif" id="notif"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
