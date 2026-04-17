@@ -1140,9 +1140,17 @@ async function sendMsg() {
     }
     await loadMessages(S.currentRoom);
   } catch (e) {
-    $('msg-inp').value = savedTxt; onInp($('msg-inp'));
-    if (savedAtt) S.pendingAtt = savedAtt;
-    showNotif('Ошибка отправки'); console.error(e);
+    if (!navigator.onLine && savedTxt && !S.pendingAtt) {
+      const r = S.rooms[S.currentRoom];
+      if (r) {
+        await enqueueMsg(r.id, { msgtype: 'm.text', body: savedTxt }).catch(() => {});
+        showNotif('Нет сети — сообщение в очереди');
+      }
+    } else {
+      $('msg-inp').value = savedTxt; onInp($('msg-inp'));
+      if (savedAtt) S.pendingAtt = savedAtt;
+      showNotif('Ошибка отправки');
+    }
   } finally { sndBtn.disabled = false; sndBtn.style.opacity = ''; updateSendBtn(); }
 }
 
@@ -2039,3 +2047,67 @@ async function logoutAllOther() {
     showDevices();
   } catch { showNotif('Ошибка'); }
 }
+
+// ===== ОФФЛАЙН-ОЧЕРЕДЬ (IndexedDB) =====
+const OUTBOX_DB = 'topgen-outbox';
+const OUTBOX_STORE = 'pending';
+let outboxDb = null;
+
+function openOutboxDb() {
+  return new Promise((resolve, reject) => {
+    if (outboxDb) { resolve(outboxDb); return; }
+    const req = indexedDB.open(OUTBOX_DB, 1);
+    req.onupgradeneeded = e => { e.target.result.createObjectStore(OUTBOX_STORE, { keyPath: 'id', autoIncrement: true }); };
+    req.onsuccess = e => { outboxDb = e.target.result; resolve(outboxDb); };
+    req.onerror = () => reject();
+  });
+}
+
+async function enqueueMsg(roomId, content) {
+  const db = await openOutboxDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(OUTBOX_STORE, 'readwrite');
+    tx.objectStore(OUTBOX_STORE).add({ roomId, content, ts: Date.now() });
+    tx.oncomplete = resolve;
+    tx.onerror = reject;
+  });
+}
+
+async function getOutbox() {
+  const db = await openOutboxDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction(OUTBOX_STORE, 'readonly');
+    const req = tx.objectStore(OUTBOX_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => resolve([]);
+  });
+}
+
+async function removeFromOutbox(id) {
+  const db = await openOutboxDb();
+  return new Promise((resolve) => {
+    const tx = db.transaction(OUTBOX_STORE, 'readwrite');
+    tx.objectStore(OUTBOX_STORE).delete(id);
+    tx.oncomplete = resolve;
+    tx.onerror = resolve;
+  });
+}
+
+async function flushOutbox() {
+  if (!navigator.onLine || !S.token) return;
+  const items = await getOutbox();
+  for (const item of items) {
+    try {
+      await api('PUT', '/rooms/' + encodeURIComponent(item.roomId) + '/send/m.room.message/' + txn(), item.content);
+      await removeFromOutbox(item.id);
+    } catch { break; }
+  }
+  if (items.length > 0 && S.currentRoom !== null) {
+    await loadMessages(S.currentRoom);
+  }
+}
+
+window.addEventListener('online', () => { showNotif('Сеть восстановлена'); flushOutbox(); });
+window.addEventListener('offline', () => { showNotif('Нет подключения — сообщения будут отправлены позже'); });
+
+openOutboxDb().catch(() => {});
