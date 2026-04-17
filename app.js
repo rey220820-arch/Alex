@@ -150,6 +150,7 @@ function showApp() {
   if (S.isAdmin) applyAdminUI();
   initWatermark();
   resetInactivity();
+  loadMyStatus();
   initFab();
   const msgsEl = $('msgs');
   if (msgsEl && !msgsEl._scrollInit) {
@@ -633,7 +634,7 @@ function renderMsgs(i, keepScroll = false) {
     } else if (msgtype === 'm.image') {
       const mxcUrl = actualContent?.url || '';
       const httpUrl = mxcToHttp(mxcUrl);
-      contentHtml = '<div class="msg-img" onclick="openImgViewer(\'' + httpUrl + '\')"><img src="' + httpUrl + '" loading="lazy" alt="фото"></div>';
+      contentHtml = '<div class="msg-img" onclick="openImgViewerSwipe(\'' + httpUrl + '\')"><img src="' + httpUrl + '" loading="lazy" alt="фото"></div>';
     } else if (msgtype === 'm.audio') {
       const mxcUrl = actualContent?.url || '';
       const httpUrl = mxcToHttp(mxcUrl);
@@ -1205,7 +1206,7 @@ function fileChosen(e, type) {
 function clearAtt() { S.pendingAtt = null; $('att-prev').classList.remove('show'); updateSendBtn(); }
 
 // ===== ПРОСМОТР ФОТО =====
-function openImgViewer(url) { $('img-viewer-img').src = url; $('img-viewer').classList.add('open'); }
+function openImgViewerSwipe(url) { $('img-viewer-img').src = url; $('img-viewer').classList.add('open'); }
 function closeImgViewer() { $('img-viewer').classList.remove('open'); $('img-viewer-img').src = ''; }
 $('img-viewer').addEventListener('click', e => { if (e.target === $('img-viewer')) closeImgViewer(); });
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
@@ -1347,7 +1348,7 @@ function renderGallery(tab) {
     mediaEvents.forEach(ev => {
       const url = mxcToHttp(ev.content?.url);
       const div = document.createElement('div'); div.className = 'gallery-item';
-      div.onclick = () => openImgViewer(url);
+      div.onclick = () => openImgViewerSwipe(url);
       div.innerHTML = '<img src="' + url + '" loading="lazy" alt="">'; grid.appendChild(div);
     });
   } else {
@@ -2439,3 +2440,61 @@ async function createChannel() {
     showNotif('📢 Канал "' + name.trim() + '" создан');
   } catch { showNotif('Ошибка создания канала'); }
 }
+
+// ===== СТАТУСЫ ПОЛЬЗОВАТЕЛЕЙ =====
+const USER_STATUSES = ['🟢 В офисе', '🏠 Удалённо', '📞 На совещании', '🏖 В отпуске', '🤒 На больничном', '🚫 Не беспокоить'];
+
+async function setMyStatus() {
+  const ovrl = document.createElement('div');
+  ovrl.className = 'ovrl open'; ovrl.id = 'ovrl-status-tmp';
+  let items = USER_STATUSES.map(s => '<div class="usr-it" style="cursor:pointer" onclick="applyStatus(\'' + esc(s) + '\')">' + s + '</div>').join('');
+  items += '<div class="usr-it" style="cursor:pointer;color:var(--mt)" onclick="applyStatus(\'\')">Убрать статус</div>';
+  ovrl.innerHTML = '<div class="mdl"><h3>Мой статус</h3><div class="usr-list">' + items + '</div><div class="mdl-btns"><button class="btn-no" onclick="document.getElementById(\'ovrl-status-tmp\').remove()">Отмена</button></div></div>';
+  ovrl.addEventListener('click', e => { if (e.target === ovrl) ovrl.remove(); });
+  document.body.appendChild(ovrl);
+}
+
+async function applyStatus(status) {
+  document.getElementById('ovrl-status-tmp')?.remove();
+  try {
+    await api('PUT', '/user/' + encodeURIComponent(S.userId) + '/account_data/m.status', { status });
+    $('usr-st').textContent = status || 'онлайн';
+    showNotif(status ? 'Статус: ' + status : 'Статус убран');
+  } catch { showNotif('Ошибка'); }
+}
+
+async function loadMyStatus() {
+  try {
+    const d = await api('GET', '/user/' + encodeURIComponent(S.userId) + '/account_data/m.status');
+    if (d.status) $('usr-st').textContent = d.status;
+  } catch {}
+}
+
+// ===== СВАЙП ФОТО В ПРОСМОТРЕ =====
+let viewerImages = [];
+let viewerIdx = 0;
+
+function openImgViewerSwipe(url) {
+  const r = S.rooms[S.currentRoom];
+  if (r) {
+    viewerImages = r.events.filter(e => e.type === 'm.room.message' && e.content?.msgtype === 'm.image').map(e => mxcToHttp(e.content.url));
+    viewerIdx = viewerImages.indexOf(url);
+    if (viewerIdx < 0) { viewerImages = [url]; viewerIdx = 0; }
+  } else { viewerImages = [url]; viewerIdx = 0; }
+  $('img-viewer-img').src = url;
+  $('img-viewer').classList.add('open');
+}
+
+(function initViewerSwipe() {
+  const viewer = document.getElementById('img-viewer');
+  if (!viewer) return;
+  let startX = 0;
+  viewer.addEventListener('touchstart', e => { startX = e.touches[0].clientX; }, { passive: true });
+  viewer.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 60) {
+      if (dx < 0 && viewerIdx < viewerImages.length - 1) { viewerIdx++; $('img-viewer-img').src = viewerImages[viewerIdx]; }
+      else if (dx > 0 && viewerIdx > 0) { viewerIdx--; $('img-viewer-img').src = viewerImages[viewerIdx]; }
+    }
+  });
+})();
