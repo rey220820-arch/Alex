@@ -338,6 +338,22 @@
   </div>
 </div></div>
 
+<div class="ovrl" id="ovrl-resetpass"><div class="mdl">
+  <h3>Сбросить пароль</h3>
+  <div class="mdl-hint" id="rp-user-hint"></div>
+  <div class="fld"><label>Новый пароль</label><input type="text" id="rp-newpass" placeholder="Оставьте пустым — сгенерируется автоматически"></div>
+  <label style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mt);margin-bottom:12px;cursor:pointer">
+    <input type="checkbox" id="rp-logout" checked> Завершить все сессии пользователя
+  </label>
+  <div class="a-err" id="rp-err"></div>
+  <div id="rp-result" style="display:none;margin-bottom:12px;padding:12px;background:var(--pm);border-radius:10px;border:1px solid var(--gd)">
+    <div style="font-size:11px;color:var(--mt);margin-bottom:4px">Временный пароль (покажите сотруднику):</div>
+    <div id="rp-pass-show" style="font-size:18px;font-weight:700;color:var(--br);font-family:monospace;letter-spacing:1px;text-align:center;padding:8px;background:var(--pk);border-radius:8px;cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent).then(()=>showNotif('Пароль скопирован'))"></div>
+    <div style="font-size:10px;color:var(--rd);margin-top:6px;text-align:center">Пароль показан один раз. Передайте сотруднику лично.</div>
+  </div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('resetpass')">Закрыть</button><button class="btn-yes" id="rp-do-btn" onclick="doResetPass()">Сбросить</button></div>
+</div></div>
+
 <!-- Эмодзи-пикер -->
 <div class="emoji-picker" id="emoji-picker">
   <div class="emoji-cats" id="emoji-cats"></div>

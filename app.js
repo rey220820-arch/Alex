@@ -1060,11 +1060,12 @@ function renderUmgmt(users) {
     d.className = 'usr-mgmt-it' + (deact ? ' deact' : '');
     d.innerHTML = '<div class="usr-it-av" style="background:' + (deact?'#aaa':'var(--br)') + '">' + ini(login) + '</div>' +
       '<div class="usr-it-inf"><div class="usr-it-nm">' + esc(name) + (u.admin ? ' 👑' : '') + '</div><div class="usr-it-lg">' + esc(login) + (deact ? ' · деактивирован' : '') + '</div></div>' +
-      (!isMe && !deact ? '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0"><button class="umgmt-kick-btn" style="background:none;border:1px solid var(--gd);border-radius:7px;padding:3px 8px;font-size:10px;color:var(--mt);cursor:pointer;white-space:nowrap">Из чатов</button><button class="umgmt-fire-btn" style="background:none;border:1px solid #F5C4C4;border-radius:7px;padding:3px 8px;font-size:10px;color:var(--rd);cursor:pointer;white-space:nowrap">Уволить</button></div>' : '') +
+      (!isMe && !deact ? '<div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0"><button class="umgmt-reset-btn" style="background:none;border:1px solid var(--bl);border-radius:7px;padding:3px 8px;font-size:10px;color:var(--bl);cursor:pointer;white-space:nowrap">Пароль</button><button class="umgmt-kick-btn" style="background:none;border:1px solid var(--gd);border-radius:7px;padding:3px 8px;font-size:10px;color:var(--mt);cursor:pointer;white-space:nowrap">Из чатов</button><button class="umgmt-fire-btn" style="background:none;border:1px solid #F5C4C4;border-radius:7px;padding:3px 8px;font-size:10px;color:var(--rd);cursor:pointer;white-space:nowrap">Уволить</button></div>' : '') +
       (!isMe && deact ? '<button class="umgmt-restore-btn" style="background:none;border:1px solid var(--gd);border-radius:7px;padding:4px 9px;font-size:11px;color:var(--mt);cursor:pointer;flex-shrink:0;white-space:nowrap">Восстановить</button>' : '');
     if (!isMe && !deact) {
       const btn = d.querySelector('.umgmt-fire-btn'); if (btn) btn.onclick = () => deactivateUser(u.user_id, name);
       const kickBtn = d.querySelector('.umgmt-kick-btn'); if (kickBtn) kickBtn.onclick = () => kickFromAllRooms(u.user_id, name);
+      const resetBtn = d.querySelector('.umgmt-reset-btn'); if (resetBtn) resetBtn.onclick = () => { closeOvrl('users'); openResetPass(u.user_id, name); };
     }
     if (!isMe && deact) { const btn = d.querySelector('.umgmt-restore-btn'); if (btn) btn.onclick = () => activateUser(u.user_id, name); }
     el.appendChild(d);
@@ -1885,4 +1886,51 @@ async function revokeInviteToken(token) {
     showNotif('Приглашение отозвано');
     loadInviteTokens();
   } catch { showNotif('Ошибка отзыва'); }
+}
+
+// ===== СБРОС ПАРОЛЯ =====
+let resetPassUserId = null;
+
+function generateTempPass() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let pass = '';
+  for (let i = 0; i < 3; i++) {
+    if (i > 0) pass += '-';
+    for (let j = 0; j < 3; j++) pass += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return pass;
+}
+
+function openResetPass(userId, name) {
+  resetPassUserId = userId;
+  $('rp-user-hint').textContent = 'Сброс пароля для: ' + name + ' (' + userId.split(':')[0].replace('@', '') + ')';
+  $('rp-newpass').value = '';
+  $('rp-logout').checked = true;
+  $('rp-err').classList.remove('show');
+  $('rp-result').style.display = 'none';
+  $('rp-do-btn').style.display = '';
+  openOvrl('resetpass');
+}
+
+async function doResetPass() {
+  if (!resetPassUserId) return;
+  const err = $('rp-err');
+  err.classList.remove('show');
+  let newPass = $('rp-newpass').value.trim();
+  if (!newPass) newPass = generateTempPass();
+  const logoutDevices = $('rp-logout').checked;
+  try {
+    const r = await adminPost('/v1/reset_password/' + encodeURIComponent(resetPassUserId), {
+      new_password: newPass,
+      logout_devices: logoutDevices
+    });
+    if (r.errcode || !r._ok) throw new Error(r.error || 'Ошибка сброса');
+    $('rp-pass-show').textContent = newPass;
+    $('rp-result').style.display = 'block';
+    $('rp-do-btn').style.display = 'none';
+    showNotif('✅ Пароль сброшен');
+  } catch (e) {
+    err.textContent = e.message;
+    err.classList.add('show');
+  }
 }
