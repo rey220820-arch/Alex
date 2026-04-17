@@ -22,7 +22,7 @@ const S = {
 
 // ===== УТИЛИТЫ =====
 const $ = id => document.getElementById(id);
-const nt = ts => { const d = ts ? new Date(ts) : new Date(); return d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); };
+const nt = ts => { const d = ts ? new Date(ts) : new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); };
 const nd = ts => { const d = new Date(ts); const t = new Date(); if (d.toDateString() === t.toDateString()) return 'сегодня'; const y = new Date(t); y.setDate(y.getDate() - 1); if (d.toDateString() === y.toDateString()) return 'вчера'; return d.toLocaleDateString('ru', { day: 'numeric', month: 'long' }); };
 const ini = n => (n || '?').split(/[\s_\-@]/).map(w => w[0] || '').join('').toUpperCase().slice(0, 2) || '??';
 const esc = s => (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -252,9 +252,19 @@ function doLogout() {
     membersOpen: false, searchOpen: false, allUsers: []
   });
   localStorage.removeItem('tg_s');
+  localStorage.removeItem('tg_archived');
+  localStorage.removeItem('tg_muted');
   Object.keys(roomReceipts).forEach(k => delete roomReceipts[k]);
   Object.keys(historyTokens).forEach(k => delete historyTokens[k]);
+  Object.keys(presenceCache).forEach(k => delete presenceCache[k]);
+  Object.keys(linkPreviewCache).forEach(k => delete linkPreviewCache[k]);
+  archivedRooms.clear();
+  mutedRooms.clear();
+  mentionMembers = [];
+  allUsersCache = [];
   loadingHistory = false;
+  _txnCounter = 0;
+  activeActs = null;
   closeUsrMenu();
   closeRoomMenu();
   document.querySelectorAll('.ovrl.open').forEach(o => o.classList.remove('open'));
@@ -1246,7 +1256,8 @@ async function fetchLinkPreview(url) {
   if (linkPreviewCache[url] !== undefined) return linkPreviewCache[url];
   linkPreviewCache[url] = null;
   try {
-    const d = await api('GET', '/preview_url?url=' + encodeURIComponent(url) + '&ts=' + Date.now());
+    const r = await fetch(CFG.server + '/_matrix/media/v3/preview_url?url=' + encodeURIComponent(url) + '&ts=' + Date.now(), { headers: { 'Authorization': 'Bearer ' + S.token } });
+    const d = await r.json();
     if (d['og:title'] || d['og:description']) {
       linkPreviewCache[url] = { title: d['og:title'] || d['og:site_name'] || '', desc: d['og:description'] || '', img: d['og:image'] || '', site: new URL(url).hostname, url };
     }
@@ -1423,6 +1434,12 @@ async function createDm() {
   const uid = $('dm-ok').dataset.uid; if (!uid) return;
   const login = uid.split(':')[0].replace('@', '');
   try {
+    const directData = await api('GET', '/user/' + encodeURIComponent(S.userId) + '/account_data/m.direct').catch(() => ({}));
+    const existingRooms = directData[uid] || [];
+    for (const rid of existingRooms) {
+      const ri = S.rooms.findIndex(r => r.id === rid);
+      if (ri >= 0) { closeOvrl('dm'); openRoom(ri); showNotif('Открыт существующий чат с ' + login); return; }
+    }
     const d = await api('POST', '/createRoom', { preset: 'private_chat', invite: [uid], is_direct: true, visibility: 'private', name: 'Личный чат: ' + login });
     closeOvrl('dm'); await loadRooms();
     const ri = S.rooms.findIndex(r => r.id === d.room_id);
@@ -1523,10 +1540,10 @@ async function doChangePass() {
   if (newP !== newP2) { err.textContent = 'Пароли не совпадают'; err.classList.add('show'); return; }
   if (oldP === newP) { err.textContent = 'Новый пароль совпадает со старым'; err.classList.add('show'); return; }
   try {
-    const r1 = await api('POST', '/account/password', { new_password: newP, logout_devices: false });
+    const r1 = await api('POST', '/account/password', { new_password: newP, logout_devices: true });
     if ((r1._status === 401 || r1.errcode === 'M_UNAUTHORIZED') && r1.flows) {
       const session = r1.session;
-      const r2 = await api('POST', '/account/password', { new_password: newP, logout_devices: false, auth: { type: 'm.login.password', identifier: { type: 'm.id.user', user: S.userId }, password: oldP, session } });
+      const r2 = await api('POST', '/account/password', { new_password: newP, logout_devices: true, auth: { type: 'm.login.password', identifier: { type: 'm.id.user', user: S.userId }, password: oldP, session } });
       if (r2.errcode) { err.textContent = r2.error || 'Неверный текущий пароль'; err.classList.add('show'); return; }
     } else if (r1.errcode) { err.textContent = r1.error || 'Ошибка'; err.classList.add('show'); return; }
     closeOvrl('chpass'); $('cp-old').value = ''; $('cp-new').value = ''; $('cp-new2').value = '';
