@@ -502,7 +502,8 @@ async function openRoom(i) {
   const av = roomAvatar(r.name);
   $('ct-av').textContent = av;
   $('ct-nm').textContent = r.name;
-  $('ct-mb').textContent = r.memberCount + ' участников · нажмите для списка';
+  $('ct-mb').textContent = r.memberCount + ' участников';
+  fetchRoomTopic(r);
   $('no-chat').style.display = 'none';
   if (S.membersOpen) { S.membersOpen = false; $('mbrs-pnl').classList.remove('open'); }
   if (window.innerWidth < 700) {
@@ -899,21 +900,25 @@ function toggleMembers() {
 async function loadMembers() {
   const r = S.rooms[S.currentRoom]; if (!r) return;
   try {
-    const d = await api('GET', '/rooms/' + encodeURIComponent(r.id) + '/members');
+    const [d, plData] = await Promise.all([
+      api('GET', '/rooms/' + encodeURIComponent(r.id) + '/members'),
+      api('GET', '/rooms/' + encodeURIComponent(r.id) + '/state/m.room.power_levels/').catch(() => ({}))
+    ]);
     const members = (d.chunk || []).filter(e => e.content?.membership === 'join' || e.content?.membership === 'invite');
     const joined = members.filter(e => e.content?.membership === 'join');
     r.memberCount = joined.length;
     $('mbrs-ttl').textContent = 'Участники (' + joined.length + ')';
-    $('ct-mb').textContent = joined.length + ' участников · нажмите для списка';
+    if (!r.topic) $('ct-mb').textContent = joined.length + ' участников';
     const el = $('mbrs-list'); el.innerHTML = '';
     members.forEach(m => {
       const login = m.state_key.split(':')[0].replace('@', '');
       const name = m.content?.displayname || login;
       const isMe = m.state_key === S.userId;
       const isPending = m.content?.membership === 'invite';
+      const role = getMemberRole(m.state_key, plData);
       const d = document.createElement('div'); d.className = 'mbr';
       d.innerHTML = '<div class="mbr-av" style="' + (isPending ? 'opacity:.5' : '') + '">' + ini(login) + '</div>' +
-        '<div class="mbr-nm">' + esc(name) + (isPending ? ' <span style="font-size:10px;color:var(--mt)">(приглашён)</span>' : '') + getPresenceDot(m.state_key) + '</div>' +
+        '<div class="mbr-nm">' + esc(name) + role + (isPending ? ' <span style="font-size:10px;color:var(--mt)">(приглашён)</span>' : '') + getPresenceDot(m.state_key) + '</div>' +
         (isMe ? '<span class="mbr-you">вы</span>' : (canKickInRoom(r) && !isPending ? '<button class="mbr-kick">Удалить</button>' : ''));
       if (!isMe && canKickInRoom(r) && !isPending) {
         const btn = d.querySelector('.mbr-kick');
@@ -1821,8 +1826,9 @@ function toggleRoomMenu() {
   const isOpen = menu.style.display === 'block';
   menu.style.display = isOpen ? 'none' : 'block';
   if (!isOpen) {
-    const rmRename = $('rm-rename'), rmDelete = $('rm-delete');
+    const rmRename = $('rm-rename'), rmDelete = $('rm-delete'), rmTopic = $('rm-topic');
     if (rmRename) rmRename.style.display = S.isAdmin ? 'flex' : 'none';
+    if (rmTopic) rmTopic.style.display = S.isAdmin ? 'flex' : 'none';
     if (rmDelete) rmDelete.style.display = S.isAdmin ? 'flex' : 'none';
   }
 }
@@ -2360,4 +2366,38 @@ function togglePinChat(roomId) {
   else { pinnedChats.add(roomId); showNotif('📌 Чат закреплён'); }
   localStorage.setItem('tg_pinned_chats', JSON.stringify([...pinnedChats]));
   renderRooms(S.rooms);
+}
+
+// ===== ТЕМА ЧАТА =====
+async function fetchRoomTopic(room) {
+  try {
+    const d = await api('GET', '/rooms/' + encodeURIComponent(room.id) + '/state/m.room.topic/');
+    if (d.topic) {
+      $('ct-mb').textContent = d.topic;
+      room.topic = d.topic;
+    }
+  } catch {}
+}
+
+// ===== РОЛИ УЧАСТНИКОВ =====
+function getMemberRole(userId, powerLevels) {
+  if (!powerLevels) return '';
+  const level = powerLevels.users?.[userId] ?? powerLevels.users_default ?? 0;
+  if (level >= 100) return ' 👑';
+  if (level >= 50) return ' 🛡';
+  return '';
+}
+
+async function editRoomTopic() {
+  const r = S.rooms[S.currentRoom]; if (!r) return;
+  const current = r.topic || '';
+  const newTopic = prompt('Описание чата:', current);
+  if (newTopic === null) return;
+  try {
+    await api('PUT', '/rooms/' + encodeURIComponent(r.id) + '/state/m.room.topic/', { topic: newTopic.trim() });
+    r.topic = newTopic.trim();
+    if (newTopic.trim()) $('ct-mb').textContent = newTopic.trim();
+    else $('ct-mb').textContent = r.memberCount + ' участников';
+    showNotif('✅ Описание обновлено');
+  } catch { showNotif('Ошибка'); }
 }
