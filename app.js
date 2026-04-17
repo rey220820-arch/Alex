@@ -386,6 +386,8 @@ function filterRooms(q) {
 
 function renderRooms(rooms) {
   const el = $('rms');
+  const active = rooms.filter(r => !archivedRooms.has(r.id));
+  const archived = rooms.filter(r => archivedRooms.has(r.id));
   if (!rooms.length) {
     el.innerHTML = S.isAdmin
       ? '<div style="padding:20px;text-align:center;color:var(--mt);font-size:13px">Чатов пока нет.<br>Нажмите <b>+ чат</b> чтобы создать.</div>'
@@ -394,29 +396,68 @@ function renderRooms(rooms) {
   }
   el.innerHTML = '';
   updateBadge();
-  rooms.forEach((r, i) => {
+  const renderRoom = (r) => {
     const idx = S.rooms.indexOf(r);
     const av = roomAvatar(r.name);
+    const isMuted = mutedRooms.has(r.id);
     const d = document.createElement('div');
     d.className = 'rm' + (S.currentRoom === idx ? ' active' : '');
     d.onclick = () => openRoom(idx);
-    d.addEventListener('contextmenu', e => {
-      e.preventDefault();
-      const a = archivedRooms.has(r.id);
-      const m = mutedRooms.has(r.id);
-      if (confirm((a ? 'Разархивировать' : 'Архивировать') + ' "' + r.name + '"?')) {
-        archiveRoom(r.id);
-      } else if (confirm((m ? 'Включить уведомления' : 'Отключить уведомления') + ' для "' + r.name + '"?')) {
-        toggleMute(r.id);
-      }
-    });
+    let pressTimer;
+    const showCtx = (x, y) => showRoomCtxMenu(r.id, r.name, x, y);
+    d.addEventListener('contextmenu', e => { e.preventDefault(); showCtx(e.clientX, e.clientY); });
+    d.addEventListener('touchstart', e => { const t = e.touches[0]; pressTimer = setTimeout(() => showCtx(t.clientX, t.clientY), 500); }, { passive: true });
+    d.addEventListener('touchend', () => clearTimeout(pressTimer));
+    d.addEventListener('touchmove', () => clearTimeout(pressTimer));
     const tm = r.lastTs ? nt(r.lastTs) : '';
     d.innerHTML = '<div class="rm-av">' + av + '</div>' +
-      '<div class="rm-inf"><div class="rm-nm">' + esc(r.name) + '</div><div class="rm-ls">' + esc((r.lastText || '').slice(0, 35)) + '</div></div>' +
+      '<div class="rm-inf"><div class="rm-nm">' + (isMuted ? '🔕 ' : '') + esc(r.name) + '</div><div class="rm-ls">' + esc((r.lastText || '').slice(0, 35)) + '</div></div>' +
       '<div class="rm-rt"><div class="rm-tm">' + tm + '</div>' +
       (r.unread ? '<div class="rm-bd">' + r.unread + '</div>' : '') + '</div>';
     el.appendChild(d);
+  };
+  active.forEach(renderRoom);
+  if (archived.length) {
+    const hdr = document.createElement('div');
+    hdr.className = 'archive-lbl';
+    hdr.textContent = 'Архив (' + archived.length + ')';
+    hdr.style.cursor = 'pointer';
+    hdr.onclick = () => {
+      const wrap = hdr.nextElementSibling;
+      if (wrap) wrap.style.display = wrap.style.display === 'none' ? '' : 'none';
+    };
+    el.appendChild(hdr);
+    const wrap = document.createElement('div');
+    archived.forEach(r => { const old = el; el.appendChild = (n) => wrap.appendChild(n); renderRoom(r); el.appendChild = old.appendChild.bind(old); });
+    el.appendChild(wrap);
+  }
+}
+
+function showRoomCtxMenu(roomId, roomName, x, y) {
+  closeRoomCtxMenu();
+  const isArchived = archivedRooms.has(roomId);
+  const isMuted = mutedRooms.has(roomId);
+  const menu = document.createElement('div');
+  menu.id = 'room-ctx-menu';
+  menu.style.cssText = 'position:fixed;z-index:300;background:var(--pk);border:1px solid var(--gd);border-radius:12px;overflow:hidden;min-width:200px;box-shadow:0 4px 20px rgba(61,32,16,.2);left:' + Math.min(x, window.innerWidth - 210) + 'px;top:' + Math.min(y, window.innerHeight - 140) + 'px';
+  const items = [
+    { text: isArchived ? '📂 Разархивировать' : '📁 Архивировать', fn: () => archiveRoom(roomId) },
+    { text: isMuted ? '🔔 Включить уведомления' : '🔕 Отключить уведомления', fn: () => toggleMute(roomId) },
+    { text: '✓ Прочитать всё', fn: () => { const ri = S.rooms.findIndex(r => r.id === roomId); if (ri >= 0) { S.rooms[ri].unread = 0; renderRooms(S.rooms); } } }
+  ];
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'rm-menu-item';
+    d.textContent = it.text;
+    d.onclick = () => { closeRoomCtxMenu(); it.fn(); };
+    menu.appendChild(d);
   });
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', closeRoomCtxMenu, { once: true }), 10);
+}
+function closeRoomCtxMenu() {
+  const m = document.getElementById('room-ctx-menu');
+  if (m) m.remove();
 }
 
 // ===== ЧАТ =====
