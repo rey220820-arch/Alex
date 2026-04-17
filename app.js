@@ -615,7 +615,7 @@ function renderMsgs(i, keepScroll = false) {
       txtDiv.className = 'msg-bbl';
       txtDiv.id = 'ev-' + ev.event_id;
       const myLogin = (S.userId || '').split(':')[0].replace('@', '');
-      txtDiv.innerHTML = replyHtml + renderMentions(esc(txt).replace(/\n/g, '<br>'), myLogin) + (edited ? '<span class="msg-edited">(ред.)</span>' : '');
+      txtDiv.innerHTML = replyHtml + renderMentions(formatText(txt), myLogin) + (edited ? '<span class="msg-edited">(ред.)</span>' : '');
       if (/https?:\/\//.test(txt)) { setTimeout(() => renderLinkPreviews(txtDiv, txt), 100); }
       contentHtml = txtDiv.outerHTML;
     } else if (msgtype === 'm.image') {
@@ -2185,4 +2185,15 @@ function showAuditLog() {
       '<div style="color:var(--br);margin-top:2px">' + esc(entry.action) + (entry.details ? ' — ' + esc(entry.details) : '') + '</div>';
     el.appendChild(d);
   });
+}
+
+// ===== ФОРМАТИРОВАНИЕ ТЕКСТА =====
+function formatText(text) {
+  let html = esc(text);
+  html = html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  html = html.replace(/__(.+?)__/g, '<i>$1</i>');
+  html = html.replace(/~~(.+?)~~/g, '<s>$1</s>');
+  html = html.replace(/`([^`]+)`/g, '<code style="background:rgba(61,32,16,.08);padding:1px 4px;border-radius:4px;font-size:13px">$1</code>');
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
