@@ -86,6 +86,7 @@
           <div class="usr-menu-item" id="mi-users" style="display:none" onclick="showUsrMgmt();closeUsrMenu()">👥 Сотрудники</div>
           <div class="usr-menu-item" id="mi-invites" style="display:none" onclick="showInvites();closeUsrMenu()">🔗 Приглашения</div>
           <div class="usr-menu-item" id="mi-storage" style="display:none" onclick="showStorage();closeUsrMenu()">💾 Хранилище</div>
+          <div class="usr-menu-item" id="mi-audit" style="display:none" onclick="showAuditLog();closeUsrMenu()">📋 Журнал</div>
           <div class="usr-menu-item" onclick="showDm();closeUsrMenu()">✉️ Личное сообщение</div>
           <div class="usr-menu-item" onclick="showDevices();closeUsrMenu()">📱 Мои устройства</div>
           <div class="usr-menu-item" id="mi-theme" onclick="toggleTheme();closeUsrMenu()">🌙 Ночная тема</div>
@@ -364,6 +365,13 @@
     <button class="btn-no" onclick="closeOvrl('devices')">Закрыть</button>
     <button class="btn-yes" style="background:var(--rd)" onclick="logoutAllOther()">Завершить все другие</button>
   </div>
+</div></div>
+
+<div class="ovrl" id="ovrl-audit"><div class="mdl">
+  <h3>📋 Журнал действий</h3>
+  <div class="mdl-hint">Последние административные действия</div>
+  <div id="audit-list" style="max-height:400px;overflow-y:auto"></div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('audit')">Закрыть</button></div>
 </div></div>
 
 <div class="ovrl" id="ovrl-storage"><div class="mdl">

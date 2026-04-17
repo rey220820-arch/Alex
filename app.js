@@ -336,6 +336,8 @@ function applyAdminUI() {
   if (miInvites) miInvites.style.display = 'flex';
   const miStorage = $('mi-storage');
   if (miStorage) miStorage.style.display = 'flex';
+  const miAudit = $('mi-audit');
+  if (miAudit) miAudit.style.display = 'flex';
 }
 
 async function fetchMyPowerLevel(room) {
@@ -908,6 +910,7 @@ async function kickMember(roomId, userId, name) {
   if (!confirm('Удалить ' + name + ' из этого чата?')) return;
   try {
     await api('POST', '/rooms/' + encodeURIComponent(roomId) + '/kick', { user_id: userId, reason: 'Удалён администратором' });
+    logAudit('Кик из чата', name);
     showNotif(name + ' удалён из чата');
     await loadMembers();
   } catch { showNotif('Ошибка удаления из чата'); }
@@ -1084,7 +1087,7 @@ function filterUmgmt(q) {
 }
 async function deactivateUser(userId, name) {
   if (!confirm('Уволить ' + name + '?')) return;
-  try { await adminPost('/v1/deactivate/' + encodeURIComponent(userId), { erase: false }); showNotif('✅ ' + name + ' деактивирован'); await showUsrMgmt(); } catch { showNotif('Ошибка деактивации'); }
+  try { await adminPost('/v1/deactivate/' + encodeURIComponent(userId), { erase: false }); logAudit('Увольнение', name); showNotif('✅ ' + name + ' деактивирован'); await showUsrMgmt(); } catch { showNotif('Ошибка деактивации'); }
 }
 async function kickFromAllRooms(userId, name) {
   if (!confirm('Удалить ' + name + ' из всех чатов?')) return;
@@ -1940,6 +1943,7 @@ async function doResetPass() {
     $('rp-pass-show').textContent = newPass;
     $('rp-result').style.display = 'block';
     $('rp-do-btn').style.display = 'none';
+    logAudit('Сброс пароля', resetPassUserId);
     showNotif('✅ Пароль сброшен');
   } catch (e) {
     err.textContent = e.message;
@@ -2152,4 +2156,33 @@ async function purgeMediaNow() {
       showNotif('✅ Очистка завершена');
     }
   } catch { showNotif('Ошибка очистки'); }
+}
+
+// ===== ЖУРНАЛ АУДИТА =====
+function logAudit(action, details) {
+  const log = JSON.parse(localStorage.getItem('tg_audit') || '[]');
+  log.unshift({
+    ts: Date.now(),
+    who: S.userId ? S.userId.split(':')[0].replace('@', '') : '?',
+    action,
+    details: details || ''
+  });
+  if (log.length > 200) log.length = 200;
+  localStorage.setItem('tg_audit', JSON.stringify(log));
+}
+
+function showAuditLog() {
+  openOvrl('audit');
+  const el = $('audit-list');
+  const log = JSON.parse(localStorage.getItem('tg_audit') || '[]');
+  if (!log.length) { el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:13px;padding:16px">Пока нет записей</div>'; return; }
+  el.innerHTML = '';
+  log.forEach(entry => {
+    const d = document.createElement('div');
+    d.style.cssText = 'padding:8px 4px;border-bottom:1px solid rgba(196,168,130,.3);font-size:12px';
+    const time = new Date(entry.ts).toLocaleString('ru');
+    d.innerHTML = '<div style="color:var(--mt);font-size:10px">' + time + ' · ' + esc(entry.who) + '</div>' +
+      '<div style="color:var(--br);margin-top:2px">' + esc(entry.action) + (entry.details ? ' — ' + esc(entry.details) : '') + '</div>';
+    el.appendChild(d);
+  });
 }
