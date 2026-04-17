@@ -320,6 +320,21 @@ function applyAdminUI() {
   if (miUsers) miUsers.style.display = 'flex';
 }
 
+async function fetchMyPowerLevel(room) {
+  try {
+    const pl = await api('GET', '/rooms/' + encodeURIComponent(room.id) + '/state/m.room.power_levels/');
+    const myLevel = pl.users?.[S.userId] ?? pl.users_default ?? 0;
+    const kickLevel = pl.kick ?? 50;
+    room.myPowerLevel = myLevel;
+    room.kickLevel = kickLevel;
+  } catch { room.myPowerLevel = 0; room.kickLevel = 50; }
+}
+
+function canKickInRoom(room) {
+  if (S.isAdmin) return true;
+  return (room.myPowerLevel || 0) >= (room.kickLevel || 50);
+}
+
 // ===== КОМНАТЫ =====
 async function loadRooms() {
   try {
@@ -428,6 +443,7 @@ async function openRoom(i) {
   if (S.searchOpen) { S.searchOpen = false; $('search-bar').classList.remove('show'); $('search-inp').value = ''; searchMsgs(''); }
   await loadMessages(i);
   sendReadMarker(i);
+  fetchMyPowerLevel(r);
   const msgsEl = $('msgs');
   if (msgsEl && !$('load-more-btn')) {
     const btn = document.createElement('button');
@@ -805,9 +821,9 @@ async function loadMembers() {
       const d = document.createElement('div'); d.className = 'mbr';
       d.innerHTML = '<div class="mbr-av" style="' + (isPending ? 'opacity:.5' : '') + '">' + ini(login) + '</div>' +
         '<div class="mbr-nm">' + esc(name) + (isPending ? ' <span style="font-size:10px;color:var(--mt)">(приглашён)</span>' : '') + getPresenceDot(m.state_key) + '</div>' +
-        (isMe ? '<span class="mbr-you">вы</span>' : (S.isAdmin && !isPending ? '<button class="mbr-rm" title="Удалить из чата">✕</button>' : ''));
-      if (!isMe && S.isAdmin && !isPending) {
-        const btn = d.querySelector('.mbr-rm');
+        (isMe ? '<span class="mbr-you">вы</span>' : (canKickInRoom(r) && !isPending ? '<button class="mbr-kick">Удалить</button>' : ''));
+      if (!isMe && canKickInRoom(r) && !isPending) {
+        const btn = d.querySelector('.mbr-kick');
         if (btn) btn.onclick = () => kickMember(r.id, m.state_key, name);
       }
       el.appendChild(d);

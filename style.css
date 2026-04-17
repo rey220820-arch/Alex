@@ -146,6 +146,8 @@ html,body{height:100%;overflow:hidden;font-family:system-ui,-apple-system,'Segoe
 .mbr-you{font-size:10px;color:var(--mt)}
 .mbr-rm{background:none;border:none;color:var(--mt);cursor:pointer;font-size:14px;padding:2px 4px;opacity:.6}
 .mbr-rm:active{opacity:1;color:var(--rd)}
+.mbr-kick{background:var(--rd);color:#fff;border:none;border-radius:7px;padding:4px 10px;font-size:11px;cursor:pointer;flex-shrink:0;font-family:Georgia,serif;white-space:nowrap}
+.mbr-kick:active{opacity:.8}
 .mbrs-add{margin:8px;border:1px dashed var(--gd);background:transparent;border-radius:8px;padding:8px;font-size:13px;color:var(--mt);cursor:pointer;width:calc(100% - 16px);font-family:Georgia,serif}
 .mbrs-add:active{background:var(--pd)}
 .mbrs-add-link{margin-top:0;border-color:var(--bl);color:var(--bl)}
