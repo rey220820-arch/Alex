@@ -2197,3 +2197,65 @@ function formatText(text) {
   html = html.replace(/\n/g, '<br>');
   return html;
 }
+
+// ===== ГОЛОСОВЫЕ СООБЩЕНИЯ =====
+let voiceRecorder = null;
+let voiceChunks = [];
+let voiceTimer = null;
+let voiceStart = 0;
+
+async function toggleVoiceRecord() {
+  if (voiceRecorder && voiceRecorder.state === 'recording') {
+    voiceRecorder.stop();
+    return;
+  }
+  if (S.currentRoom === null) { showNotif('Сначала откройте чат'); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceChunks = [];
+    voiceRecorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/ogg;codecs=opus') ? 'audio/ogg;codecs=opus' : 'audio/webm;codecs=opus' });
+    voiceRecorder.ondataavailable = e => { if (e.data.size > 0) voiceChunks.push(e.data); };
+    voiceRecorder.onstop = async () => {
+      stream.getTracks().forEach(t => t.stop());
+      clearInterval(voiceTimer);
+      $('voice-btn').classList.remove('recording');
+      $('voice-btn').textContent = '🎤';
+      if (!voiceChunks.length) return;
+      const blob = new Blob(voiceChunks, { type: voiceRecorder.mimeType });
+      const duration = Math.round((Date.now() - voiceStart) / 1000);
+      await sendVoice(blob, duration);
+    };
+    voiceRecorder.start();
+    voiceStart = Date.now();
+    $('voice-btn').classList.add('recording');
+    $('voice-btn').textContent = '⏹';
+    voiceTimer = setInterval(() => {
+      const sec = Math.round((Date.now() - voiceStart) / 1000);
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      $('voice-btn').title = m + ':' + String(s).padStart(2, '0');
+    }, 500);
+  } catch { showNotif('Нет доступа к микрофону'); }
+}
+
+async function sendVoice(blob, duration) {
+  const r = S.rooms[S.currentRoom];
+  if (!r) return;
+  try {
+    const buf = await blob.arrayBuffer();
+    const ext = blob.type.includes('ogg') ? 'ogg' : 'webm';
+    const uploadR = await fetch(CFG.server + '/_matrix/media/v3/upload?filename=voice.' + ext, {
+      method: 'POST', headers: { 'Authorization': 'Bearer ' + S.token, 'Content-Type': blob.type }, body: buf
+    });
+    const uploadD = await uploadR.json();
+    if (!uploadD.content_uri) throw new Error('upload failed');
+    await api('PUT', '/rooms/' + encodeURIComponent(r.id) + '/send/m.room.message/' + txn(), {
+      msgtype: 'm.audio',
+      body: 'Голосовое сообщение',
+      url: uploadD.content_uri,
+      info: { mimetype: blob.type, size: blob.size, duration: duration * 1000 },
+      'org.matrix.msc1767.audio': { duration: duration * 1000 }
+    });
+    await loadMessages(S.currentRoom);
+  } catch { showNotif('Ошибка отправки голосового'); }
+}

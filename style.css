@@ -339,3 +339,19 @@ button,.rm,.am-it,.usr-it,.mention-item,.emoji-item,.rp-btn,.react,.hdr-act,.a-t
 .devices-item:last-child{border-bottom:none}
 .dev-current{color:var(--gr);font-size:10px;font-weight:700}
 body.dark code{background:rgba(255,255,255,.08)}
+.voice-btn{width:38px;height:38px;border-radius:50%;background:var(--pd);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.voice-btn:active{background:var(--gd)}
+.voice-btn.recording{background:var(--rd);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.1)}}
+.voice-timer{font-size:12px;color:var(--rd);font-weight:700;font-family:monospace;min-width:40px;text-align:center}
+.voice-wave{display:flex;align-items:center;gap:2px;height:24px}
+.voice-wave span{width:3px;background:var(--br);border-radius:2px;animation:vwave 1s infinite}
+.voice-wave span:nth-child(2){animation-delay:.15s}
+.voice-wave span:nth-child(3){animation-delay:.3s}
+.voice-wave span:nth-child(4){animation-delay:.45s}
+@keyframes vwave{0%,100%{height:6px}50%{height:20px}}
+.audio-player{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--pm);border-radius:12px;border:1px solid var(--gd);max-width:260px;margin-top:4px}
+.audio-play-btn{width:28px;height:28px;border-radius:50%;background:var(--br);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--pk);font-size:12px}
+.audio-bar{flex:1;height:4px;background:var(--gd);border-radius:2px;position:relative;cursor:pointer}
+.audio-progress{height:100%;background:var(--br);border-radius:2px;width:0;transition:width .1s}
+.audio-time{font-size:11px;color:var(--mt);font-family:monospace;flex-shrink:0}

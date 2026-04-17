@@ -188,6 +188,7 @@
           onkeydown="onKey(event)"
           onfocus="onFocus();loadMentionMembers()"
           onblur="onBlur();setTimeout(hideMentionPopup,200)"></textarea>
+        <button class="voice-btn" id="voice-btn" onclick="toggleVoiceRecord()" title="Голосовое сообщение">🎤</button>
         <button class="snd-btn" id="snd-btn" onclick="sendMsg()">
           <svg width="17" height="17" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13" stroke="var(--pk)" stroke-width="2.5" stroke-linecap="round"/><polygon points="22 2 15 22 11 13 2 9 22 2" fill="var(--pk)"/></svg>
         </button>
