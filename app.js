@@ -780,19 +780,33 @@ function toggleSearch() {
 }
 
 function searchMsgs(q) {
-  const msgs = $('msgs').querySelectorAll('.msg-bbl');
-  let count = 0;
-  msgs.forEach(el => {
-    const txt = el.textContent;
-    if (el._origHTML) { el.innerHTML = el._origHTML; el._origHTML = null; }
-    if (q && txt.toLowerCase().includes(q.toLowerCase())) {
-      el._origHTML = el.innerHTML;
-      const safeQ = esc(q);
-      el.innerHTML = el.innerHTML.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), m => '<mark class="search-hl">' + safeQ + '</mark>');
-      count++;
-    }
+  document.querySelectorAll('.search-hl').forEach(mark => {
+    const parent = mark.parentNode;
+    parent.replaceChild(document.createTextNode(mark.textContent), mark);
+    parent.normalize();
   });
-  $('search-cnt').textContent = q ? (count + ' найдено') : '';
+  if (!q) { $('search-cnt').textContent = ''; return; }
+  let count = 0;
+  const lq = q.toLowerCase();
+  $('msgs').querySelectorAll('.msg-bbl').forEach(el => {
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+    const matches = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      const idx = node.textContent.toLowerCase().indexOf(lq);
+      if (idx >= 0) matches.push({ node, idx });
+    }
+    if (matches.length) count++;
+    matches.forEach(({ node, idx }) => {
+      const range = document.createRange();
+      range.setStart(node, idx);
+      range.setEnd(node, idx + q.length);
+      const mark = document.createElement('mark');
+      mark.className = 'search-hl';
+      range.surroundContents(mark);
+    });
+  });
+  $('search-cnt').textContent = count + ' найдено';
 }
 
 // ===== УЧАСТНИКИ =====
@@ -1264,7 +1278,11 @@ async function openProfile() {
     const d = await api('GET', '/profile/' + encodeURIComponent(S.userId));
     if (d.avatar_url) {
       const url = mxcToHttp(d.avatar_url);
-      prof.innerHTML = '<img src="' + url + '" onerror="this.parentNode.textContent=\'' + ini(nm) + '\'">';
+      prof.replaceChildren();
+      const img = document.createElement('img');
+      img.src = url;
+      img.onerror = () => { prof.textContent = ini(nm); };
+      prof.appendChild(img);
     }
   } catch {}
   openOvrl('profile');
@@ -1278,9 +1296,17 @@ async function uploadAvatar(e) {
     if (uploadD.content_uri) {
       await api('PUT', '/profile/' + encodeURIComponent(S.userId) + '/avatar_url', { avatar_url: uploadD.content_uri });
       const url = mxcToHttp(uploadD.content_uri);
-      $('prof-av').innerHTML = '<img src="' + url + '">';
+      const profAv = $('prof-av');
+      profAv.replaceChildren();
+      const profImg = document.createElement('img');
+      profImg.src = url;
+      profAv.appendChild(profImg);
       const av = $('usr-av');
-      av.innerHTML = '<img src="' + url + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover">';
+      av.replaceChildren();
+      const avImg = document.createElement('img');
+      avImg.src = url;
+      avImg.style.cssText = 'width:32px;height:32px;border-radius:50%;object-fit:cover';
+      av.appendChild(avImg);
       showNotif('✅ Аватар обновлён');
     }
   } catch { showNotif('Ошибка загрузки аватара'); }
