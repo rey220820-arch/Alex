@@ -338,6 +338,8 @@ function applyAdminUI() {
   if (miStorage) miStorage.style.display = 'flex';
   const miAudit = $('mi-audit');
   if (miAudit) miAudit.style.display = 'flex';
+  const miChannel = $('mi-channel');
+  if (miChannel) miChannel.style.display = 'flex';
 }
 
 async function fetchMyPowerLevel(room) {
@@ -625,7 +627,7 @@ function renderMsgs(i, keepScroll = false) {
       txtDiv.className = 'msg-bbl';
       txtDiv.id = 'ev-' + ev.event_id;
       const myLogin = (S.userId || '').split(':')[0].replace('@', '');
-      txtDiv.innerHTML = replyHtml + renderMentions(formatText(txt), myLogin) + (edited ? '<span class="msg-edited">(ред.)</span>' : '');
+      txtDiv.innerHTML = replyHtml + renderMentionsExtended(formatText(txt), myLogin) + (edited ? '<span class="msg-edited">(ред.)</span>' : '');
       if (/https?:\/\//.test(txt)) { setTimeout(() => renderLinkPreviews(txtDiv, txt), 100); }
       contentHtml = txtDiv.outerHTML;
     } else if (msgtype === 'm.image') {
@@ -2400,4 +2402,40 @@ async function editRoomTopic() {
     else $('ct-mb').textContent = r.memberCount + ' участников';
     showNotif('✅ Описание обновлено');
   } catch { showNotif('Ошибка'); }
+}
+
+// ===== @ALL УПОМИНАНИЕ =====
+function renderMentionsExtended(text, myLogin) {
+  let html = text;
+  html = html.replace(/@all\b/gi, '<span class="mention me" onclick="showNotif(\'Упоминание всех\')">@all</span>');
+  html = html.replace(/@([a-z0-9_\-\.]+)/gi, (match, login) => {
+    if (login.toLowerCase() === 'all') return match;
+    const isMe = login.toLowerCase() === (myLogin || '').toLowerCase();
+    return '<span class="mention' + (isMe ? ' me' : '') + '" onclick="showNotif(\'@' + login + '\')">@' + login + '</span>';
+  });
+  return html;
+}
+
+// ===== КАНАЛЫ (READONLY) =====
+async function createChannel() {
+  const name = prompt('Название канала:');
+  if (!name || !name.trim()) return;
+  try {
+    const d = await api('POST', '/createRoom', {
+      name: name.trim(),
+      preset: 'private_chat',
+      visibility: 'private',
+      power_level_content_override: {
+        events_default: 50,
+        users_default: 0,
+        invite: 50,
+        kick: 50,
+        ban: 50,
+        redact: 50
+      },
+      topic: '📢 Канал · только администраторы могут писать'
+    });
+    await loadRooms();
+    showNotif('📢 Канал "' + name.trim() + '" создан');
+  } catch { showNotif('Ошибка создания канала'); }
 }
