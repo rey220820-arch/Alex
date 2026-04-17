@@ -1206,7 +1206,6 @@ function fileChosen(e, type) {
 function clearAtt() { S.pendingAtt = null; $('att-prev').classList.remove('show'); updateSendBtn(); }
 
 // ===== ПРОСМОТР ФОТО =====
-function openImgViewerSwipe(url) { $('img-viewer-img').src = url; $('img-viewer').classList.add('open'); }
 function closeImgViewer() { $('img-viewer').classList.remove('open'); $('img-viewer-img').src = ''; }
 $('img-viewer').addEventListener('click', e => { if (e.target === $('img-viewer')) closeImgViewer(); });
 function downloadFile(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; a.target = '_blank'; document.body.appendChild(a); a.click(); document.body.removeChild(a); }
@@ -1570,12 +1569,7 @@ function insertMention(user, atIdx) {
   inp.selectionStart = inp.selectionEnd = atIdx + user.login.length + 2;
   hideMentionPopup(); inp.focus(); onInp(inp);
 }
-function renderMentions(text, myLogin) {
-  return text.replace(/@([a-z0-9_\-\.]+)/gi, (match, login) => {
-    const isMe = login.toLowerCase() === (myLogin || '').toLowerCase();
-    return '<span class="mention' + (isMe ? ' me' : '') + '" onclick="showNotif(\'@' + login + '\')">@' + login + '</span>';
-  });
-}
+
 
 // ===== СМЕНА ПАРОЛЯ =====
 async function doChangePass() {
