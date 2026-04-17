@@ -274,6 +274,8 @@ function doLogout() {
   if (newChatBtn) newChatBtn.style.display = 'none';
   if (miNewChat) miNewChat.style.display = 'none';
   if (miUsers) miUsers.style.display = 'none';
+  const miInvites = $('mi-invites');
+  if (miInvites) miInvites.style.display = 'none';
   $('rms').innerHTML = '<div style="padding:20px;text-align:center;color:var(--mt);font-size:13px">Загружаем чаты...</div>';
   $('msgs').innerHTML = '';
   $('ct-nm').textContent = 'Выберите чат';
@@ -328,6 +330,8 @@ function applyAdminUI() {
   if (newChatBtn) newChatBtn.style.display = 'inline-block';
   if (miNewChat) miNewChat.style.display = 'flex';
   if (miUsers) miUsers.style.display = 'flex';
+  const miInvites = $('mi-invites');
+  if (miInvites) miInvites.style.display = 'flex';
 }
 
 async function fetchMyPowerLevel(room) {
@@ -1804,3 +1808,81 @@ function toggleUsrMenu() {
 }
 function closeUsrMenu() { const menu = $('usr-menu'); if (menu) menu.classList.remove('open'); }
 document.addEventListener('click', e => { const wrap = document.querySelector('.usr-menu-wrap'); if (wrap && !wrap.contains(e.target)) closeUsrMenu(); });
+
+// ===== ИНВАЙТ-ССЫЛКИ =====
+async function showInvites() {
+  const sel = $('inv-room-sel');
+  sel.innerHTML = '<option value="">— без привязки —</option>';
+  S.rooms.forEach(r => {
+    const opt = document.createElement('option');
+    opt.value = r.id;
+    opt.textContent = r.name;
+    sel.appendChild(opt);
+  });
+  $('inv-result').style.display = 'none';
+  openOvrl('invites');
+  loadInviteTokens();
+}
+
+async function createInviteToken() {
+  const roomId = $('inv-room-sel').value;
+  const usesAllowed = parseInt($('inv-uses').value) || 0;
+  const expMs = parseInt($('inv-exp').value) || 0;
+  const expiry = expMs > 0 ? Date.now() + expMs : null;
+  try {
+    const body = {};
+    if (usesAllowed > 0) body.uses_allowed = usesAllowed;
+    if (expiry) body.expiry_time = expiry;
+    body.length = 16;
+    const d = await adminPost('/v1/registration_tokens/new', body);
+    if (d.errcode) throw new Error(d.error || 'Ошибка создания токена');
+    const token = d.token;
+    let link = window.location.origin + window.location.pathname + '?invite=' + encodeURIComponent(token);
+    if (roomId) link += '&room=' + encodeURIComponent(roomId);
+    $('inv-link').value = link;
+    $('inv-result').style.display = 'block';
+    loadInviteTokens();
+  } catch (e) { showNotif('Ошибка: ' + e.message); }
+}
+
+function copyInviteLink() {
+  const val = $('inv-link').value;
+  navigator.clipboard.writeText(val)
+    .then(() => showNotif('✅ Ссылка скопирована'))
+    .catch(() => { $('inv-link').select(); document.execCommand('copy'); showNotif('✅ Ссылка скопирована'); });
+}
+
+async function loadInviteTokens() {
+  const el = $('inv-tokens-list');
+  el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:8px">Загружаем...</div>';
+  try {
+    const d = await adminApi('/v1/registration_tokens');
+    const tokens = d.registration_tokens || [];
+    if (!tokens.length) { el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:8px">Нет активных приглашений</div>'; return; }
+    el.innerHTML = '';
+    tokens.forEach(t => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid rgba(196,168,130,.3);font-size:12px';
+      const used = t.pending + t.completed;
+      const limit = t.uses_allowed || '∞';
+      const expired = t.expiry_time && t.expiry_time < Date.now();
+      const expStr = t.expiry_time ? new Date(t.expiry_time).toLocaleDateString('ru') : 'бессрочно';
+      div.innerHTML = '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;color:var(--br);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(t.token) + '</div>' +
+        '<div style="color:var(--mt);font-size:10px">Использовано: ' + used + '/' + limit + ' · до ' + expStr + (expired ? ' · <span style="color:var(--rd)">истёк</span>' : '') + '</div></div>' +
+        '<button class="inv-revoke-btn" style="background:none;border:1px solid var(--rd);border-radius:6px;padding:3px 8px;font-size:10px;color:var(--rd);cursor:pointer;flex-shrink:0;white-space:nowrap">Отозвать</button>';
+      const btn = div.querySelector('.inv-revoke-btn');
+      btn.onclick = () => revokeInviteToken(t.token);
+      el.appendChild(div);
+    });
+  } catch { el.innerHTML = '<div style="text-align:center;color:var(--mt);font-size:12px;padding:8px">Ошибка загрузки</div>'; }
+}
+
+async function revokeInviteToken(token) {
+  if (!confirm('Отозвать приглашение ' + token.slice(0, 8) + '...?')) return;
+  try {
+    await adminDelete('/v1/registration_tokens/' + encodeURIComponent(token));
+    showNotif('Приглашение отозвано');
+    loadInviteTokens();
+  } catch { showNotif('Ошибка отзыва'); }
+}

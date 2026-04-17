@@ -84,6 +84,7 @@
           <div class="usr-menu-item" onclick="openProfile();closeUsrMenu()">👤 Профиль</div>
           <div class="usr-menu-item" id="mi-new-chat" style="display:none" onclick="openOvrl('create');closeUsrMenu()">✏️ Новый чат</div>
           <div class="usr-menu-item" id="mi-users" style="display:none" onclick="showUsrMgmt();closeUsrMenu()">👥 Сотрудники</div>
+          <div class="usr-menu-item" id="mi-invites" style="display:none" onclick="showInvites();closeUsrMenu()">🔗 Приглашения</div>
           <div class="usr-menu-item" onclick="showDm();closeUsrMenu()">✉️ Личное сообщение</div>
           <div class="usr-menu-item" id="mi-theme" onclick="toggleTheme();closeUsrMenu()">🌙 Ночная тема</div>
           <div class="usr-menu-item danger" onclick="doLogout()">🚪 Выйти</div>
@@ -299,6 +300,42 @@
   <div class="fld"><label>Повторите новый</label><input type="password" id="cp-new2" placeholder="Повторите новый пароль"></div>
   <div class="a-err" id="cp-err"></div>
   <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('chpass')">Отмена</button><button class="btn-yes" onclick="doChangePass()">Сохранить</button></div>
+</div></div>
+
+<div class="ovrl" id="ovrl-invites"><div class="mdl">
+  <h3>Приглашения</h3>
+  <div class="mdl-hint">Создайте ссылку-приглашение для нового сотрудника</div>
+  <div class="fld"><label>Привязать к чату (опционально)</label>
+    <select id="inv-room-sel" style="width:100%;border:1.5px solid var(--gd);border-radius:10px;padding:11px 13px;font-size:14px;background:var(--pm);color:var(--br);outline:none;font-family:inherit">
+      <option value="">— без привязки —</option>
+    </select>
+  </div>
+  <div class="fld"><label>Сколько раз можно использовать</label>
+    <select id="inv-uses" style="width:100%;border:1.5px solid var(--gd);border-radius:10px;padding:11px 13px;font-size:14px;background:var(--pm);color:var(--br);outline:none;font-family:inherit">
+      <option value="1">1 раз</option>
+      <option value="5">5 раз</option>
+      <option value="20">20 раз</option>
+      <option value="0">Без лимита</option>
+    </select>
+  </div>
+  <div class="fld"><label>Срок действия</label>
+    <select id="inv-exp" style="width:100%;border:1.5px solid var(--gd);border-radius:10px;padding:11px 13px;font-size:14px;background:var(--pm);color:var(--br);outline:none;font-family:inherit">
+      <option value="86400000">1 день</option>
+      <option value="604800000" selected>7 дней</option>
+      <option value="2592000000">30 дней</option>
+      <option value="0">Бессрочно</option>
+    </select>
+  </div>
+  <div class="mdl-btns"><button class="btn-no" onclick="closeOvrl('invites')">Отмена</button><button class="btn-yes" onclick="createInviteToken()">Создать ссылку</button></div>
+  <div id="inv-result" style="display:none;margin-top:12px;padding:12px;background:var(--pm);border-radius:10px;border:1px solid var(--gd)">
+    <div style="font-size:11px;color:var(--mt);margin-bottom:6px">Ссылка для сотрудника:</div>
+    <input id="inv-link" readonly onclick="this.select()" style="width:100%;border:1.5px solid var(--gd);border-radius:8px;padding:9px;font-size:13px;background:var(--pk);color:var(--br);outline:none;margin-bottom:8px">
+    <button class="btn-yes" onclick="copyInviteLink()" style="width:100%">Скопировать ссылку</button>
+  </div>
+  <div style="margin-top:16px">
+    <div style="font-size:11px;color:var(--mt);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Активные приглашения</div>
+    <div id="inv-tokens-list"></div>
+  </div>
 </div></div>
 
 <!-- Эмодзи-пикер -->
