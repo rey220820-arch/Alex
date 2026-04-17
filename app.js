@@ -400,13 +400,21 @@ function roomAvatar(name) {
 }
 
 function filterRooms(q) {
-  const filtered = S.rooms.filter(r => r.name.toLowerCase().includes(q.toLowerCase()));
-  renderRooms(filtered);
+  if (!q) { renderRooms(S.rooms); return; }
+  const lq = q.toLowerCase();
+  const byName = S.rooms.filter(r => r.name.toLowerCase().includes(lq));
+  const byMsg = S.rooms.filter(r => !byName.includes(r) && r.events.some(e => e.type === 'm.room.message' && e.content?.body?.toLowerCase().includes(lq)));
+  renderRooms([...byName, ...byMsg]);
 }
 
 function renderRooms(rooms) {
   const el = $('rms');
-  const active = rooms.filter(r => !archivedRooms.has(r.id));
+  const active = rooms.filter(r => !archivedRooms.has(r.id)).sort((a, b) => {
+    const ap = pinnedChats.has(a.id) ? 1 : 0;
+    const bp = pinnedChats.has(b.id) ? 1 : 0;
+    if (ap !== bp) return bp - ap;
+    return (b.lastTs || 0) - (a.lastTs || 0);
+  });
   const archived = rooms.filter(r => archivedRooms.has(r.id));
   if (!rooms.length) {
     el.innerHTML = S.isAdmin
@@ -431,7 +439,7 @@ function renderRooms(rooms) {
     d.addEventListener('touchmove', () => clearTimeout(pressTimer));
     const tm = r.lastTs ? nt(r.lastTs) : '';
     d.innerHTML = '<div class="rm-av">' + av + '</div>' +
-      '<div class="rm-inf"><div class="rm-nm">' + (isMuted ? '🔕 ' : '') + esc(r.name) + '</div><div class="rm-ls">' + esc((r.lastText || '').slice(0, 35)) + '</div></div>' +
+      '<div class="rm-inf"><div class="rm-nm">' + (pinnedChats.has(r.id) ? '📌 ' : '') + (isMuted ? '🔕 ' : '') + esc(r.name) + '</div><div class="rm-ls">' + esc((r.lastText || '').slice(0, 35)) + '</div></div>' +
       '<div class="rm-rt"><div class="rm-tm">' + tm + '</div>' +
       (r.unread ? '<div class="rm-bd">' + r.unread + '</div>' : '') + '</div>';
     el.appendChild(d);
@@ -461,6 +469,7 @@ function showRoomCtxMenu(roomId, roomName, x, y) {
   menu.id = 'room-ctx-menu';
   menu.style.cssText = 'position:fixed;z-index:300;background:var(--pk);border:1px solid var(--gd);border-radius:12px;overflow:hidden;min-width:200px;box-shadow:0 4px 20px rgba(61,32,16,.2);left:' + Math.min(x, window.innerWidth - 210) + 'px;top:' + Math.min(y, window.innerHeight - 140) + 'px';
   const items = [
+    { text: pinnedChats.has(roomId) ? '📌 Открепить' : '📌 Закрепить', fn: () => togglePinChat(roomId) },
     { text: isArchived ? '📂 Разархивировать' : '📁 Архивировать', fn: () => archiveRoom(roomId) },
     { text: isMuted ? '🔔 Включить уведомления' : '🔕 Отключить уведомления', fn: () => toggleMute(roomId) },
     { text: '✓ Прочитать всё', fn: () => { const ri = S.rooms.findIndex(r => r.id === roomId); if (ri >= 0) { S.rooms[ri].unread = 0; renderRooms(S.rooms); } } }
@@ -2341,4 +2350,14 @@ async function sendPoll() {
     await loadMessages(S.currentRoom);
     showNotif('📊 Опрос отправлен');
   } catch { showNotif('Ошибка создания опроса'); }
+}
+
+// ===== ЗАКРЕПЛЁННЫЕ ЧАТЫ =====
+const pinnedChats = new Set(JSON.parse(localStorage.getItem('tg_pinned_chats') || '[]'));
+
+function togglePinChat(roomId) {
+  if (pinnedChats.has(roomId)) { pinnedChats.delete(roomId); showNotif('Чат откреплён'); }
+  else { pinnedChats.add(roomId); showNotif('📌 Чат закреплён'); }
+  localStorage.setItem('tg_pinned_chats', JSON.stringify([...pinnedChats]));
+  renderRooms(S.rooms);
 }
