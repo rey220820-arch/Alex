@@ -1,8 +1,7 @@
 // ===== КОНФИГ =====
 const CFG = {
   server: window.location.origin,
-  serverName: '88.83.217.130',
-  regToken: 'Cj42iJeoTAv3JA6W'
+  serverName: '88.83.217.130'
 };
 
 // ===== СОСТОЯНИЕ =====
@@ -17,7 +16,8 @@ const S = {
   searchOpen: false,
   allUsers: [],
   pinnedMsgs: {},
-  inviteRoomId: null
+  inviteRoomId: null,
+  inviteToken: null
 };
 
 // ===== УТИЛИТЫ =====
@@ -105,6 +105,7 @@ async function adminPut(path, body) {
 window.addEventListener('load', () => {
   const params = new URLSearchParams(window.location.search);
   S.inviteRoomId = params.get('room') || null;
+  S.inviteToken = params.get('invite') || null;
   const saved = localStorage.getItem('tg_s');
   setTimeout(() => {
     $('splash').classList.add('hidden');
@@ -125,6 +126,17 @@ function showAuth() {
   $('app').style.display = 'none';
   $('auth').classList.remove('hidden');
   $('app').classList.add('hidden');
+  const tabs = document.querySelector('.a-tabs');
+  const tabRg = $('tab-rg');
+  if (S.inviteToken) {
+    if (tabs) tabs.style.display = '';
+    if (tabRg) tabRg.style.display = '';
+  } else {
+    if (tabs) tabs.style.display = 'none';
+    if (tabRg) tabRg.style.display = 'none';
+    $('f-l').style.display = 'block';
+    $('f-r').style.display = 'none';
+  }
 }
 
 function showApp() {
@@ -201,6 +213,7 @@ async function doLogin() {
 }
 
 async function doRegister() {
+  if (!S.inviteToken) { showAErr('Регистрация доступна только по ссылке-приглашению от администратора'); return; }
   const u = $('r-u').value.trim().toLowerCase();
   const p = $('r-p').value;
   const p2 = $('r-p2').value;
@@ -213,7 +226,7 @@ async function doRegister() {
     const d1 = await api('POST', '/register', { kind: 'user' });
     const session = d1.session;
     if (!session) throw new Error('Сервер не вернул session.');
-    const d2 = await api('POST', '/register', { username: u, password: p, auth: { type: 'm.login.registration_token', token: CFG.regToken, session } });
+    const d2 = await api('POST', '/register', { username: u, password: p, auth: { type: 'm.login.registration_token', token: S.inviteToken, session } });
     if (d2.errcode === 'M_USER_IN_USE') throw new Error('Этот логин уже занят');
     if (d2.errcode) throw new Error(d2.error || 'Ошибка регистрации');
     if (!d2.user_id) throw new Error('Сервер не подтвердил регистрацию');
