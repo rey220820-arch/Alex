@@ -622,12 +622,21 @@ function renderMsgs(i, keepScroll = false) {
       const mxcUrl = actualContent?.url || '';
       const httpUrl = mxcToHttp(mxcUrl);
       contentHtml = '<div class="msg-img" onclick="openImgViewer(\'' + httpUrl + '\')"><img src="' + httpUrl + '" loading="lazy" alt="фото"></div>';
-    } else if (msgtype === 'm.file' || msgtype === 'm.video' || msgtype === 'm.audio') {
+    } else if (msgtype === 'm.audio') {
+      const mxcUrl = actualContent?.url || '';
+      const httpUrl = mxcToHttp(mxcUrl);
+      const dur = actualContent?.info?.duration ? Math.round(actualContent.info.duration / 1000) : 0;
+      const durStr = dur ? Math.floor(dur/60) + ':' + String(dur%60).padStart(2,'0') : '';
+      contentHtml = '<div class="audio-player"><button class="audio-play-btn" onclick="playInlineAudio(this,\'' + httpUrl + '\')">▶</button><div class="audio-bar"><div class="audio-progress"></div></div><span class="audio-time">' + durStr + '</span></div>';
+    } else if (msgtype === 'm.video') {
+      const mxcUrl = actualContent?.url || '';
+      const httpUrl = mxcToHttp(mxcUrl);
+      contentHtml = '<div style="max-width:280px;border-radius:12px;overflow:hidden;border:1px solid var(--gd);margin-top:4px"><video src="' + httpUrl + '" controls preload="metadata" style="width:100%;display:block;max-height:300px"></video></div>';
+    } else if (msgtype === 'm.file') {
       const mxcUrl = actualContent?.url || '';
       const httpUrl = mxcToHttp(mxcUrl);
       const sz = actualContent?.info?.size ? fmtSize(actualContent.info.size) : '';
-      const icon = msgtype === 'm.video' ? '🎥' : msgtype === 'm.audio' ? '🎵' : '📄';
-      contentHtml = '<div class="msg-file" onclick="downloadFile(\'' + httpUrl + '\',\'' + esc(actualContent?.body||'файл') + '\')"><div class="f-ico"><span style="font-size:16px">' + icon + '</span></div><div class="f-inf"><div class="f-nm">' + esc(actualContent?.body || 'файл') + '</div><div class="f-sz">' + sz + '</div></div></div>';
+      contentHtml = '<div class="msg-file" onclick="downloadFile(\'' + httpUrl + '\',\'' + esc(actualContent?.body||'файл') + '\')"><div class="f-ico"><span style="font-size:16px">📄</span></div><div class="f-inf"><div class="f-nm">' + esc(actualContent?.body || 'файл') + '</div><div class="f-sz">' + sz + '</div></div></div>';
     } else { return; }
     const reactions = {};
     r.events.forEach(e => {
@@ -2258,4 +2267,29 @@ async function sendVoice(blob, duration) {
     });
     await loadMessages(S.currentRoom);
   } catch { showNotif('Ошибка отправки голосового'); }
+}
+
+// ===== INLINE АУДИО ПЛЕЕР =====
+let currentAudio = null;
+function playInlineAudio(btn, url) {
+  if (currentAudio && !currentAudio.paused) {
+    currentAudio.pause();
+    if (currentAudio._btn) currentAudio._btn.textContent = '▶';
+    if (currentAudio.src === url) { currentAudio = null; return; }
+  }
+  const audio = new Audio(url);
+  audio._btn = btn;
+  const bar = btn.parentElement.querySelector('.audio-progress');
+  const timeEl = btn.parentElement.querySelector('.audio-time');
+  btn.textContent = '⏸';
+  audio.ontimeupdate = () => {
+    if (audio.duration) {
+      bar.style.width = (audio.currentTime / audio.duration * 100) + '%';
+      const rem = Math.round(audio.duration - audio.currentTime);
+      timeEl.textContent = Math.floor(rem/60) + ':' + String(rem%60).padStart(2,'0');
+    }
+  };
+  audio.onended = () => { btn.textContent = '▶'; bar.style.width = '0'; currentAudio = null; };
+  audio.play().catch(() => showNotif('Ошибка воспроизведения'));
+  currentAudio = audio;
 }
