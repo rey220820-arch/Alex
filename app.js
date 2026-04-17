@@ -2293,3 +2293,52 @@ function playInlineAudio(btn, url) {
   audio.play().catch(() => showNotif('Ошибка воспроизведения'));
   currentAudio = audio;
 }
+
+// ===== ОПРОСЫ =====
+function showPollCreator() {
+  const ovrl = document.createElement('div');
+  ovrl.className = 'ovrl open'; ovrl.id = 'ovrl-poll-tmp';
+  ovrl.innerHTML = '<div class="mdl"><h3>📊 Создать опрос</h3>' +
+    '<div class="fld"><label>Вопрос</label><input id="poll-q" placeholder="Ваш вопрос..."></div>' +
+    '<div id="poll-opts"><div class="fld"><label>Вариант 1</label><input class="poll-opt" placeholder="Вариант ответа"></div><div class="fld"><label>Вариант 2</label><input class="poll-opt" placeholder="Вариант ответа"></div></div>' +
+    '<button class="btn-no" style="margin-bottom:12px;width:100%" onclick="addPollOption()">+ Добавить вариант</button>' +
+    '<div class="mdl-btns"><button class="btn-no" onclick="document.getElementById(\'ovrl-poll-tmp\').remove()">Отмена</button><button class="btn-yes" onclick="sendPoll()">Отправить</button></div></div>';
+  ovrl.addEventListener('click', e => { if (e.target === ovrl) ovrl.remove(); });
+  document.body.appendChild(ovrl);
+}
+
+function addPollOption() {
+  const container = document.getElementById('poll-opts');
+  const count = container.querySelectorAll('.poll-opt').length + 1;
+  const div = document.createElement('div'); div.className = 'fld';
+  div.innerHTML = '<label>Вариант ' + count + '</label><input class="poll-opt" placeholder="Вариант ответа">';
+  container.appendChild(div);
+}
+
+async function sendPoll() {
+  const q = document.getElementById('poll-q')?.value.trim();
+  if (!q) { showNotif('Введите вопрос'); return; }
+  const optEls = document.querySelectorAll('.poll-opt');
+  const answers = [];
+  optEls.forEach((el, i) => {
+    const v = el.value.trim();
+    if (v) answers.push({ id: String(i), 'org.matrix.msc3381.v2.text': v });
+  });
+  if (answers.length < 2) { showNotif('Минимум 2 варианта'); return; }
+  const r = S.rooms[S.currentRoom]; if (!r) return;
+  try {
+    await api('PUT', '/rooms/' + encodeURIComponent(r.id) + '/send/m.poll.start/' + txn(), {
+      'org.matrix.msc3381.v2.poll': {
+        question: { 'org.matrix.msc3381.v2.text': q },
+        kind: 'org.matrix.msc3381.v2.disclosed',
+        max_selections: 1,
+        answers: answers
+      },
+      msgtype: 'm.poll.start',
+      body: q
+    });
+    document.getElementById('ovrl-poll-tmp')?.remove();
+    await loadMessages(S.currentRoom);
+    showNotif('📊 Опрос отправлен');
+  } catch { showNotif('Ошибка создания опроса'); }
+}
